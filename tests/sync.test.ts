@@ -16,7 +16,7 @@ function baseData(): SessionData {
         groups: {},
         groupOrder: [],
         activeGroupId: null,
-    } as SessionData;
+    } as unknown as SessionData;
 }
 
 describe('sync merge helpers', () => {

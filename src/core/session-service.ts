@@ -235,8 +235,15 @@ export class SessionService {
         return this.data.sessions[this.data.activeSessionId] || null;
     }
 
+    // Layout seams. The shell wires these to the LayoutAdapter so that every
+    // getLayout/changeLayout call is confined to that one adapter module; the
+    // defaults here (and in tests) fall back to the injected app.
     getCurrentWorkspaceLayout(): Layout {
         return (this.app.workspace.getLayout as () => Layout)();
+    }
+
+    changeWorkspaceLayout(layout: unknown): Promise<void> | unknown {
+        return this.app.workspace.changeLayout(layout);
     }
 
     serializeLayout(layout: unknown): string {
@@ -279,7 +286,7 @@ export class SessionService {
         const opts = options || {};
         if (!layout) return Promise.resolve();
         const nextLayout = this.buildLayoutForRestore(layout);
-        const apply = Promise.resolve(this.app.workspace.changeLayout(nextLayout));
+        const apply = Promise.resolve(this.changeWorkspaceLayout(nextLayout));
         if (opts.catchErrors === false) return apply as Promise<void>;
         return (apply as Promise<void>).catch(() => {});
     }

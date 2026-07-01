@@ -104,4 +104,30 @@ where is the MIT license?
 - Created the `LICENSE` file in the root directory containing the MIT license, retaining the original copyright of s1m4ne (2025) and adding Josh Glazer (2026).
 - Committed and pushed the new `LICENSE` file to the remote repository.
 
+## Exchange 7 (2026-07-01)
+
+### User Prompt
+Build the plugin per `New-4-Code.filled.md`: replicate `obsidian-workspace-plus` in modern TypeScript, confine undocumented Obsidian internals to a single thin adapter, split the monolithic i18n, port the 83 unit tests, use multi-file sync-friendly storage with an `index.json` and conflict-safe merging, add a status-bar colour picker, and use the `wsmgr-` class prefix.
+
+### Claude Output
+- **Resolved a blocker up front (AskUserQuestion):** instruction #3 named `fileItems[path].setCollapsed`, but neither the audit nor the reference plugin use any file-explorer internals — the real undocumented surface is the workspace layout API. User confirmed the adapter should wrap the layout APIs; no folder-collapse feature was invented.
+- Scaffolded the TS/Vitest/esbuild project (`package.json`, `tsconfig`, `vitest.config.ts`, `esbuild.config.mjs`, `manifest.json`, `versions.json`, `styles.css` with `wpp-`→`wsmgr-` + `--wsmgr-status-name-color`).
+- Split the reference's ~7,600-line `i18n.js` into 21 per-language modules under `src/i18n/` (all five source tables merged with the reference's precedence); generated a typed `Strings` interface.
+- Built the pure core (`src/core/`, zero `obsidian` imports): `SessionService` (session/group/CRUD/saving/switching/startup/commands/settings/history data logic) and `PersistenceService` (multi-file storage, orphan directory scan, union-merge index, last-writer-wins by mtime, duplicate-on-conflict, Promise write-queue + debounce), plus `layout-utils`, `sync`, `css`, `utils`, `default-data`, `types`, `host`.
+- Built the shell (`src/`): `main.ts` (composition + wiring), `adapter/layout-adapter.ts`, status bar (controller/actions/render), `frontmatter.ts`, session context menu/actions/list-actions, settings tab (colour picker → CSS custom property on document root), and modals.
+- Ported all 83 reference tests to Vitest and added 14 new deterministic tests (orphan scan, conflict-duplicate, write-queue/debounce, colour→CSS mapping, no-legacy-path). **97/97 green**; `tsc --noEmit` clean; production `main.js` builds.
+- Wrote `NewBuild/BUILD-MANIFEST.md` (files, objections, reviewer-criteria mapping) and a derived README noting MIT + derivation.
+
+| # | Issue / Feature | Fix / Implementation |
+|---|---|---|
+| 1 | Instruction #3 named a non-existent internal API (`fileItems.setCollapsed`) | Confirmed with user; adapter wraps the layout APIs actually used; no invented feature |
+| 2 | Monolithic ~7,600-line `i18n.js` | Split into 21 per-language modules + typed loader; all languages + all 5 source tables retained |
+| 3 | Single-file vault-root storage caused sync conflicts | Multi-file `sessions/{id}.json` + `sessions/index.json`; startup orphan scan + union merge |
+| 4 | Concurrent multi-device edits could lose/overwrite sessions | Last-writer-wins by mtime; never delete; diverging-newer → `(Conflict - <ISO>)` duplicate |
+| 5 | ES5 prototype-mixin architecture, untestable | Strict composition into typed `SessionService`/`PersistenceService`; pure core with zero obsidian imports |
+| 6 | Status-bar name colour not customizable | Settings colour picker → `--wsmgr-status-name-color` on `:root`; no dynamic style injection |
+| 7 | Legacy `wpp-` CSS prefix | Renamed to `wsmgr-` throughout styles + render |
+| 8 | i18n split initially dropped `EXTENDED_STRINGS`/`NOTE_SESSION_STRINGS` | Fixed generator to merge all five tables with correct precedence |
+| 9 | Vitest could not resolve types-only `obsidian` package | Added a stub module + alias; per-test `vi.mock` overrides |
+
 

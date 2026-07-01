@@ -127,6 +127,10 @@ export class PersistenceService {
         return Promise.resolve();
     }
     notify(_message: string): void {}
+    /** Persist the settings subset (wired by the shell to Obsidian's saveData). */
+    saveSettings(): Promise<unknown> {
+        return Promise.resolve();
+    }
 
     // ========================================================================
     // Paths (multi-file layout under the plugin directory)
@@ -599,7 +603,8 @@ export class PersistenceService {
                 .then(() => this.writeJsonWithBackup(this.getIndexPath(), this.getSessionsBackupPath(), sessionData))
                 .then(() => this.writeIndividualSessionFiles(sessionData))
                 .then(() => this.recordSessionDataStored(sessionData))
-                .then(() => this.rotateBackupIfNeeded(sessionData));
+                .then(() => this.rotateBackupIfNeeded(sessionData))
+                .then(() => this.saveSettings());
         });
     }
 

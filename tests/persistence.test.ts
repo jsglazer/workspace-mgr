@@ -16,7 +16,7 @@ function makeService(files: Record<string, string> = {}, readLog?: string[]) {
         groups: {},
         groupOrder: [],
         activeGroupId: null,
-    } as SessionData;
+    } as unknown as SessionData;
     const written: Record<string, string> = { ...files };
     const adapter: FsAdapterLike = {
         exists: (p: string) => Promise.resolve(Object.prototype.hasOwnProperty.call(written, p)),
