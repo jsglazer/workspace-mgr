@@ -20,11 +20,16 @@ travel cleanly between devices under Obsidian Sync.
 
 - Save the current workspace layout as a named session.
 - Switch sessions from the status bar, command palette, hotkeys, or session manager.
-- Automatic save-on-switch, or a manual save workflow with an unsaved-changes warning.
+- Manual save workflow with an unsaved-changes warning by default (auto-save-on-switch
+  is available as an opt-in setting).
 - Organize sessions into groups.
-- Customizable status-bar click / middle-click / right-click / modified-click actions.
+- Customizable status-bar click / middle-click / right-click / modified-click actions —
+  clicking the status bar opens the session manager (add/select/delete sessions) by default.
 - Scroll on the status bar to switch sessions.
-- **Set the status-bar session-name colour** from a settings colour picker.
+- **Set the status-bar session-name colour**, with separate settings colour pickers for
+  light and dark themes.
+- **Set the unsaved-changes highlight colour**, also with separate light/dark pickers
+  (drives both the text colour and a computed background tint).
 - Save, reload, duplicate, rename, delete, reorder, and bulk-delete sessions.
 - Per-session version history with restore.
 - Load sessions from note front-matter with `workspace-session`, and save the
@@ -42,12 +47,13 @@ travel cleanly between devices under Obsidian Sync.
   time; the index is union-merged; sessions are never deleted during a merge. If
   an incoming synced session is newer *and* its content diverges, it is preserved
   as a duplicate named `… (Conflict - <timestamp>)` rather than overwriting.
-- **Status-bar colour.** The session-name colour is a settings colour picker,
-  applied via the `--wsmgr-status-name-color` CSS custom property on the document
-  root (no dynamic style injection).
+- **Status-bar colours.** The session-name colour and the unsaved-changes
+  highlight colour are each settings colour pickers with separate light/dark-theme
+  values, applied via CSS custom properties on the document root (no dynamic
+  style injection) and resolved against Obsidian's active theme.
 - **Modern, testable codebase.** Rewritten in TypeScript with a pure,
   dependency-free decision core (`src/core/`) that imports nothing from Obsidian,
-  covered by a headless Vitest suite (97 tests, including the original plugin's
+  covered by a headless Vitest suite (102 tests, including the original plugin's
   83 behavioral tests ported over).
 
 > Sessions start fresh in the new location. Data from the original
@@ -58,7 +64,9 @@ travel cleanly between devices under Obsidian Sync.
 Open the command palette and search for *Workspace Manager* to switch sessions,
 save the current layout, create a blank session, open the session manager, or
 restore version history. Bind any of these to hotkeys. The status bar shows the
-active group and session; click it for the quick actions configured in settings.
+active group and session; click it to open the session manager (add, switch to,
+or delete sessions), or reconfigure the click / middle-click / right-click
+actions in settings.
 
 ## Architecture
 
