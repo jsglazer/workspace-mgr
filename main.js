@@ -10145,7 +10145,7 @@ var DEFAULT_DATA = {
   previewPrevious: true,
   confirmDeleteByHotkey: true,
   confirmQuickActions: false,
-  autoSaveOnSwitch: true,
+  autoSaveOnSwitch: false,
   warnOnUnsavedSwitch: true,
   highlightUnsavedSessionChanges: true,
   restoreSidebars: true,
@@ -10173,10 +10173,17 @@ var DEFAULT_DATA = {
   statusBarScrollResetMs: 250,
   statusBarScrollInvert: false,
   // Status-bar session-name colour (drives the --wsmgr-status-name-color CSS
-  // custom property). Empty means "use the theme default".
-  statusBarNameColor: "",
+  // custom property), one value per Obsidian theme mode. Empty means "use the
+  // theme default".
+  statusBarNameColorLight: "",
+  statusBarNameColorDark: "",
+  // Unsaved-changes status-bar highlight colour (drives the
+  // --wsmgr-unsaved-color CSS custom property; the highlight background is a
+  // computed tint of this colour). Empty means "use the theme default".
+  unsavedHighlightColorLight: "",
+  unsavedHighlightColorDark: "",
   statusBarActions: {
-    click: "quickSwitcher",
+    click: "sessionManager",
     altClick: "reloadWithoutSaving",
     modClick: "saveSession",
     shiftClick: "none",
@@ -11589,10 +11596,24 @@ var SessionService = class {
     this.data.versionHistoryConfirmRestore = !!enabled;
     return this.persistIfNeeded(options);
   }
-  /** Status-bar session-name colour setting; drives the CSS custom property. */
-  setStatusBarNameColor(value, options) {
-    this.data.statusBarNameColor = typeof value === "string" ? value : "";
-    this.updateStatusBar();
+  /** Status-bar session-name colour (light theme); drives the CSS custom property. */
+  setStatusBarNameColorLight(value, options) {
+    this.data.statusBarNameColorLight = typeof value === "string" ? value : "";
+    return this.persistIfNeeded(options);
+  }
+  /** Status-bar session-name colour (dark theme); drives the CSS custom property. */
+  setStatusBarNameColorDark(value, options) {
+    this.data.statusBarNameColorDark = typeof value === "string" ? value : "";
+    return this.persistIfNeeded(options);
+  }
+  /** Unsaved-highlight colour (light theme); drives the CSS custom property. */
+  setUnsavedHighlightColorLight(value, options) {
+    this.data.unsavedHighlightColorLight = typeof value === "string" ? value : "";
+    return this.persistIfNeeded(options);
+  }
+  /** Unsaved-highlight colour (dark theme); drives the CSS custom property. */
+  setUnsavedHighlightColorDark(value, options) {
+    this.data.unsavedHighlightColorDark = typeof value === "string" ? value : "";
     return this.persistIfNeeded(options);
   }
   // ========================================================================
@@ -11896,7 +11917,10 @@ var SETTINGS_KEYS = [
   "showFilterInput",
   "showActiveSwitchCommand",
   "numberedSwitchCommands",
-  "statusBarNameColor"
+  "statusBarNameColorLight",
+  "statusBarNameColorDark",
+  "unsavedHighlightColorLight",
+  "unsavedHighlightColorDark"
 ];
 function pickKeys(data, keys) {
   const out = {};
@@ -12637,9 +12661,18 @@ var FrontmatterController = class {
 // src/core/css.ts
 var STATUS_NAME_COLOR_VAR = "--wsmgr-status-name-color";
 var STATUS_NAME_COLOR_FALLBACK = "var(--text-muted)";
-function statusNameColorValue(color) {
-  const trimmed = typeof color === "string" ? color.trim() : "";
-  return trimmed || STATUS_NAME_COLOR_FALLBACK;
+var UNSAVED_COLOR_VAR = "--wsmgr-unsaved-color";
+var UNSAVED_COLOR_FALLBACK = "var(--text-warning)";
+function resolveThemedColor(light, dark, isDark, fallback) {
+  const chosen = isDark ? dark : light;
+  const trimmed = typeof chosen === "string" ? chosen.trim() : "";
+  return trimmed || fallback;
+}
+function statusNameColorValue(light, dark, isDark) {
+  return resolveThemedColor(light, dark, isDark, STATUS_NAME_COLOR_FALLBACK);
+}
+function unsavedHighlightColorValue(light, dark, isDark) {
+  return resolveThemedColor(light, dark, isDark, UNSAVED_COLOR_FALLBACK);
 }
 
 // src/adapter/layout-adapter.ts
@@ -13583,16 +13616,34 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const data = this.host.data;
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsSectionSessionListSearch ? "Status bar session name colour" : "Status bar colour").setDesc("Colour of the session name shown in the status bar.").addColorPicker((cp) => {
-      const current = typeof data.statusBarNameColor === "string" && data.statusBarNameColor ? data.statusBarNameColor : "";
+    containerEl.createEl("div", {
+      cls: "wsmgr-settings-notice",
+      text: 'The core Obsidian "Workspace" plugin must be enabled for Workspace Manager to work.'
+    });
+    new import_obsidian13.Setting(containerEl).setName("Status bar session name colour (light theme)").setDesc("Colour of the session name shown in the status bar when using a light theme.").addColorPicker((cp) => {
+      const current = data.statusBarNameColorLight || "";
       if (current) cp.setValue(current);
       cp.onChange(async (value) => {
-        await this.host.session.setStatusBarNameColor(value);
+        await this.host.session.setStatusBarNameColorLight(value);
         this.host.applyStatusNameColor();
       });
     }).addExtraButton(
       (b) => b.setIcon("rotate-ccw").setTooltip("Reset to theme default (" + STATUS_NAME_COLOR_FALLBACK + ")").onClick(async () => {
-        await this.host.session.setStatusBarNameColor("");
+        await this.host.session.setStatusBarNameColorLight("");
+        this.host.applyStatusNameColor();
+        this.display();
+      })
+    );
+    new import_obsidian13.Setting(containerEl).setName("Status bar session name colour (dark theme)").setDesc("Colour of the session name shown in the status bar when using a dark theme.").addColorPicker((cp) => {
+      const current = data.statusBarNameColorDark || "";
+      if (current) cp.setValue(current);
+      cp.onChange(async (value) => {
+        await this.host.session.setStatusBarNameColorDark(value);
+        this.host.applyStatusNameColor();
+      });
+    }).addExtraButton(
+      (b) => b.setIcon("rotate-ccw").setTooltip("Reset to theme default (" + STATUS_NAME_COLOR_FALLBACK + ")").onClick(async () => {
+        await this.host.session.setStatusBarNameColorDark("");
         this.host.applyStatusNameColor();
         this.display();
       })
@@ -13610,6 +13661,34 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
     new import_obsidian13.Setting(containerEl).setName(L2.settingsHighlightUnsavedSessionChanges).setDesc(L2.settingsHighlightUnsavedSessionChangesDesc).addToggle(
       (t) => t.setValue(this.host.session.isUnsavedStatusBarHighlightEnabled()).onChange(async (v) => {
         await this.host.session.setUnsavedStatusBarHighlight(v);
+      })
+    );
+    new import_obsidian13.Setting(containerEl).setName("Unsaved highlight colour (light theme)").setDesc("Colour of the status bar when there are unsaved changes, using a light theme.").addColorPicker((cp) => {
+      const current = data.unsavedHighlightColorLight || "";
+      if (current) cp.setValue(current);
+      cp.onChange(async (value) => {
+        await this.host.session.setUnsavedHighlightColorLight(value);
+        this.host.applyUnsavedHighlightColor();
+      });
+    }).addExtraButton(
+      (b) => b.setIcon("rotate-ccw").setTooltip("Reset to theme default (" + UNSAVED_COLOR_FALLBACK + ")").onClick(async () => {
+        await this.host.session.setUnsavedHighlightColorLight("");
+        this.host.applyUnsavedHighlightColor();
+        this.display();
+      })
+    );
+    new import_obsidian13.Setting(containerEl).setName("Unsaved highlight colour (dark theme)").setDesc("Colour of the status bar when there are unsaved changes, using a dark theme.").addColorPicker((cp) => {
+      const current = data.unsavedHighlightColorDark || "";
+      if (current) cp.setValue(current);
+      cp.onChange(async (value) => {
+        await this.host.session.setUnsavedHighlightColorDark(value);
+        this.host.applyUnsavedHighlightColor();
+      });
+    }).addExtraButton(
+      (b) => b.setIcon("rotate-ccw").setTooltip("Reset to theme default (" + UNSAVED_COLOR_FALLBACK + ")").onClick(async () => {
+        await this.host.session.setUnsavedHighlightColorDark("");
+        this.host.applyUnsavedHighlightColor();
+        this.display();
       })
     );
     new import_obsidian13.Setting(containerEl).setName(L2.settingsRestoreSidebars).setDesc(L2.settingsRestoreSidebarsDesc).addToggle(
@@ -13671,6 +13750,13 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
     resolveLocale(this.data.language || "auto");
     setupStatusBar(this);
     this.applyStatusNameColor();
+    this.applyUnsavedHighlightColor();
+    this.registerEvent(
+      this.app.workspace.on("css-change", () => {
+        this.applyStatusNameColor();
+        this.applyUnsavedHighlightColor();
+      })
+    );
     this.session.syncSessionCommands();
     this.registerCommands();
     this.frontmatterCtl.registerFrontmatterListeners();
@@ -13739,9 +13825,24 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
       shouldShowUnsavedStatusBarHighlight: () => this.session.shouldShowUnsavedStatusBarHighlight()
     });
   }
+  isDarkTheme() {
+    return document.body.classList.contains("theme-dark");
+  }
   applyStatusNameColor() {
-    const value = statusNameColorValue(this.data.statusBarNameColor);
+    const value = statusNameColorValue(
+      this.data.statusBarNameColorLight,
+      this.data.statusBarNameColorDark,
+      this.isDarkTheme()
+    );
     document.documentElement.style.setProperty(STATUS_NAME_COLOR_VAR, value);
+  }
+  applyUnsavedHighlightColor() {
+    const value = unsavedHighlightColorValue(
+      this.data.unsavedHighlightColorLight,
+      this.data.unsavedHighlightColorDark,
+      this.isDarkTheme()
+    );
+    document.documentElement.style.setProperty(UNSAVED_COLOR_VAR, value);
   }
   // ------------------------------------------------------------------
   // Commands

@@ -12,6 +12,10 @@ travel cleanly between devices under Obsidian Sync.
 > distributed under the MIT License (see [LICENSE](LICENSE)), which retains the
 > original author's copyright.
 
+> [!IMPORTANT]
+> The core Obsidian **Workspace** plugin must be enabled for Workspace Manager
+> to work.
+
 ## Highlights
 
 - Save the current workspace layout as a named session.

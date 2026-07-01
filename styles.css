@@ -3,17 +3,30 @@
  * Derived from obsidian-workspace-plus (MIT); the legacy `wpp-` class prefix
  * has been renamed to `wsmgr-`.
  *
- * The status-bar session-name colour is driven by a CSS custom property
- * (--wsmgr-status-name-color) that the settings color picker sets on the
- * document root (:root). No dynamic <style> injection is used.
+ * The status-bar session-name colour and the unsaved-highlight colour are
+ * each driven by a CSS custom property (--wsmgr-status-name-color,
+ * --wsmgr-unsaved-color) that the settings colour pickers set on the
+ * document root (:root), resolved per light/dark theme in the shell.
+ * No dynamic <style> injection is used.
  */
 
 :root {
     --wsmgr-status-name-color: var(--text-muted);
+    --wsmgr-unsaved-color: var(--text-warning);
 }
 
 .wsmgr-status-name {
     color: var(--wsmgr-status-name-color);
+}
+
+.wsmgr-settings-notice {
+    padding: 8px 12px;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    border-left: 3px solid var(--text-warning);
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
 }
 
 /* ============================================================
@@ -294,14 +307,14 @@ body.wsmgr-session-list-dragging * {
 }
 
 .wsmgr-status-bar.wsmgr-status-bar-unsaved {
-    color: var(--text-warning);
-    background: rgba(var(--color-orange-rgb), 0.14);
+    color: var(--wsmgr-unsaved-color);
+    background: color-mix(in srgb, var(--wsmgr-unsaved-color) 14%, transparent);
     border-radius: 4px;
 }
 
 .wsmgr-status-bar.wsmgr-status-bar-unsaved:hover {
-    color: var(--text-warning);
-    background: rgba(var(--color-orange-rgb), 0.2);
+    color: var(--wsmgr-unsaved-color);
+    background: color-mix(in srgb, var(--wsmgr-unsaved-color) 20%, transparent);
 }
 
 .wsmgr-status-icon {

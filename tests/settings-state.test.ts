@@ -68,6 +68,24 @@ describe('settings-state', () => {
         expect(counters.persistCalls).toBe(1);
     });
 
+    test('stores light/dark status-bar name colours independently', async () => {
+        const { svc, counters } = createService();
+        await svc.setStatusBarNameColorLight('#ff0000');
+        await svc.setStatusBarNameColorDark('#00ff00');
+        expect(svc.data.statusBarNameColorLight).toBe('#ff0000');
+        expect(svc.data.statusBarNameColorDark).toBe('#00ff00');
+        expect(counters.persistCalls).toBe(2);
+    });
+
+    test('stores light/dark unsaved-highlight colours independently', async () => {
+        const { svc, counters } = createService();
+        await svc.setUnsavedHighlightColorLight('#111111');
+        await svc.setUnsavedHighlightColorDark('#222222');
+        expect(svc.data.unsavedHighlightColorLight).toBe('#111111');
+        expect(svc.data.unsavedHighlightColorDark).toBe('#222222');
+        expect(counters.persistCalls).toBe(2);
+    });
+
     test('starts and stops version history timer with the setting', async () => {
         const { svc, counters } = createService();
         await svc.setVersionHistoryEnabled(false);

@@ -43,7 +43,8 @@ const SETTINGS_KEYS = [
     'searchOverlaySize', 'versionHistoryEnabled', 'versionHistorySnapshotInterval', 'versionHistoryCtrlRmbRestore',
     'versionHistoryConfirmRestore', 'statusBarScrollPreset', 'statusBarScrollModifierMode', 'statusBarScrollThreshold',
     'statusBarScrollCooldownMs', 'statusBarScrollResetMs', 'statusBarScrollInvert', 'statusBarActions',
-    'confirmQuickActions', 'showFilterInput', 'showActiveSwitchCommand', 'numberedSwitchCommands', 'statusBarNameColor',
+    'confirmQuickActions', 'showFilterInput', 'showActiveSwitchCommand', 'numberedSwitchCommands',
+    'statusBarNameColorLight', 'statusBarNameColorDark', 'unsavedHighlightColorLight', 'unsavedHighlightColorDark',
 ];
 
 export interface PlatformLike {

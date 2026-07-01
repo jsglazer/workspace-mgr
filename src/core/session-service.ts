@@ -1682,10 +1682,27 @@ export class SessionService {
         return this.persistIfNeeded(options);
     }
 
-    /** Status-bar session-name colour setting; drives the CSS custom property. */
-    setStatusBarNameColor(value: string, options?: { persist?: boolean }): Promise<unknown> {
-        this.data.statusBarNameColor = typeof value === 'string' ? value : '';
-        this.updateStatusBar();
+    /** Status-bar session-name colour (light theme); drives the CSS custom property. */
+    setStatusBarNameColorLight(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.statusBarNameColorLight = typeof value === 'string' ? value : '';
+        return this.persistIfNeeded(options);
+    }
+
+    /** Status-bar session-name colour (dark theme); drives the CSS custom property. */
+    setStatusBarNameColorDark(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.statusBarNameColorDark = typeof value === 'string' ? value : '';
+        return this.persistIfNeeded(options);
+    }
+
+    /** Unsaved-highlight colour (light theme); drives the CSS custom property. */
+    setUnsavedHighlightColorLight(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.unsavedHighlightColorLight = typeof value === 'string' ? value : '';
+        return this.persistIfNeeded(options);
+    }
+
+    /** Unsaved-highlight colour (dark theme); drives the CSS custom property. */
+    setUnsavedHighlightColorDark(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.unsavedHighlightColorDark = typeof value === 'string' ? value : '';
         return this.persistIfNeeded(options);
     }
 

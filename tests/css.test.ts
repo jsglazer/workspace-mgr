@@ -1,33 +1,45 @@
 import { describe, test, expect } from 'vitest';
 import {
-    STATUS_NAME_COLOR_VAR,
     STATUS_NAME_COLOR_FALLBACK,
+    UNSAVED_COLOR_FALLBACK,
     statusNameColorValue,
-    statusNameColorDeclaration,
+    unsavedHighlightColorValue,
 } from '../src/core/css';
 
-// Deterministic test (§4): a chosen colour-picker value maps to the expected CSS
-// custom-property declaration string; empty falls back to the theme colour.
+// Deterministic test (§4): a chosen colour-picker value maps to the expected
+// CSS custom-property value, per light/dark theme; empty falls back to the
+// theme colour.
 describe('status-bar colour -> CSS custom property mapping', () => {
-    test('maps a chosen colour to the custom-property declaration', () => {
-        expect(statusNameColorDeclaration('#ff0000')).toBe('--wsmgr-status-name-color: #ff0000;');
-        expect(statusNameColorDeclaration('rgb(1, 2, 3)')).toBe('--wsmgr-status-name-color: rgb(1, 2, 3);');
+    test('picks the light-theme colour when not dark', () => {
+        expect(statusNameColorValue('#ff0000', '#00ff00', false)).toBe('#ff0000');
+    });
+
+    test('picks the dark-theme colour when dark', () => {
+        expect(statusNameColorValue('#ff0000', '#00ff00', true)).toBe('#00ff00');
     });
 
     test('trims whitespace around the chosen colour', () => {
-        expect(statusNameColorDeclaration('  #abcdef  ')).toBe('--wsmgr-status-name-color: #abcdef;');
-        expect(statusNameColorValue('  #abcdef  ')).toBe('#abcdef');
+        expect(statusNameColorValue('  #abcdef  ', '', false)).toBe('#abcdef');
     });
 
     test('falls back to the theme muted colour when empty', () => {
-        expect(statusNameColorValue('')).toBe(STATUS_NAME_COLOR_FALLBACK);
-        expect(statusNameColorValue('   ')).toBe(STATUS_NAME_COLOR_FALLBACK);
-        expect(statusNameColorValue(null)).toBe(STATUS_NAME_COLOR_FALLBACK);
-        expect(statusNameColorDeclaration('')).toBe(`${STATUS_NAME_COLOR_VAR}: ${STATUS_NAME_COLOR_FALLBACK};`);
+        expect(statusNameColorValue('', '', false)).toBe(STATUS_NAME_COLOR_FALLBACK);
+        expect(statusNameColorValue('   ', '   ', true)).toBe(STATUS_NAME_COLOR_FALLBACK);
+        expect(statusNameColorValue(null, null, false)).toBe(STATUS_NAME_COLOR_FALLBACK);
+    });
+});
+
+describe('unsaved-highlight colour -> CSS custom property mapping', () => {
+    test('picks the light-theme colour when not dark', () => {
+        expect(unsavedHighlightColorValue('#ff0000', '#00ff00', false)).toBe('#ff0000');
     });
 
-    test('uses the wsmgr- prefixed variable name (no legacy wpp-)', () => {
-        expect(STATUS_NAME_COLOR_VAR).toBe('--wsmgr-status-name-color');
-        expect(STATUS_NAME_COLOR_VAR).not.toContain('wpp-');
+    test('picks the dark-theme colour when dark', () => {
+        expect(unsavedHighlightColorValue('#ff0000', '#00ff00', true)).toBe('#00ff00');
+    });
+
+    test('falls back to the theme warning colour when empty', () => {
+        expect(unsavedHighlightColorValue('', '', false)).toBe(UNSAVED_COLOR_FALLBACK);
+        expect(unsavedHighlightColorValue(undefined, undefined, true)).toBe(UNSAVED_COLOR_FALLBACK);
     });
 });

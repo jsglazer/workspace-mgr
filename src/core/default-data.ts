@@ -11,7 +11,7 @@ export const DEFAULT_DATA: SessionData = {
     previewPrevious: true,
     confirmDeleteByHotkey: true,
     confirmQuickActions: false,
-    autoSaveOnSwitch: true,
+    autoSaveOnSwitch: false,
     warnOnUnsavedSwitch: true,
     highlightUnsavedSessionChanges: true,
     restoreSidebars: true,
@@ -39,10 +39,17 @@ export const DEFAULT_DATA: SessionData = {
     statusBarScrollResetMs: 250,
     statusBarScrollInvert: false,
     // Status-bar session-name colour (drives the --wsmgr-status-name-color CSS
-    // custom property). Empty means "use the theme default".
-    statusBarNameColor: '',
+    // custom property), one value per Obsidian theme mode. Empty means "use the
+    // theme default".
+    statusBarNameColorLight: '',
+    statusBarNameColorDark: '',
+    // Unsaved-changes status-bar highlight colour (drives the
+    // --wsmgr-unsaved-color CSS custom property; the highlight background is a
+    // computed tint of this colour). Empty means "use the theme default".
+    unsavedHighlightColorLight: '',
+    unsavedHighlightColorDark: '',
     statusBarActions: {
-        click: 'quickSwitcher',
+        click: 'sessionManager',
         altClick: 'reloadWithoutSaving',
         modClick: 'saveSession',
         shiftClick: 'none',

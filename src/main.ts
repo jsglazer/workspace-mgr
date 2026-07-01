@@ -9,7 +9,7 @@ import { SessionService } from './core/session-service';
 import { PersistenceService } from './core/persistence-service';
 import { FrontmatterController } from './frontmatter';
 import { DEFAULT_DATA } from './core/default-data';
-import { statusNameColorValue, STATUS_NAME_COLOR_VAR } from './core/css';
+import { statusNameColorValue, STATUS_NAME_COLOR_VAR, unsavedHighlightColorValue, UNSAVED_COLOR_VAR } from './core/css';
 import { createLayoutAdapter, type LayoutAdapter } from './adapter/layout-adapter';
 import { renderStatusBar } from './session-statusbar';
 import { setupStatusBar } from './statusbar-controller';
@@ -61,6 +61,13 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
 
         setupStatusBar(this as never);
         this.applyStatusNameColor();
+        this.applyUnsavedHighlightColor();
+        this.registerEvent(
+            this.app.workspace.on('css-change', () => {
+                this.applyStatusNameColor();
+                this.applyUnsavedHighlightColor();
+            }),
+        );
 
         this.session.syncSessionCommands();
         this.registerCommands();
@@ -141,9 +148,26 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         });
     }
 
+    private isDarkTheme(): boolean {
+        return document.body.classList.contains('theme-dark');
+    }
+
     applyStatusNameColor(): void {
-        const value = statusNameColorValue(this.data.statusBarNameColor as string);
+        const value = statusNameColorValue(
+            this.data.statusBarNameColorLight as string,
+            this.data.statusBarNameColorDark as string,
+            this.isDarkTheme(),
+        );
         document.documentElement.style.setProperty(STATUS_NAME_COLOR_VAR, value);
+    }
+
+    applyUnsavedHighlightColor(): void {
+        const value = unsavedHighlightColorValue(
+            this.data.unsavedHighlightColorLight as string,
+            this.data.unsavedHighlightColorDark as string,
+            this.isDarkTheme(),
+        );
+        document.documentElement.style.setProperty(UNSAVED_COLOR_VAR, value);
     }
 
     // ------------------------------------------------------------------
