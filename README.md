@@ -22,9 +22,15 @@ travel cleanly between devices under Obsidian Sync.
 - Switch sessions from the status bar, command palette, hotkeys, or session manager.
 - Manual save workflow with an unsaved-changes warning by default (auto-save-on-switch
   is available as an opt-in setting).
+- **Session manager modal** — filter, create, switch, rename, and delete sessions with
+  inline icons, an item counter, an ACTIVE badge, group tabs (with a "+" to create new
+  groups), and full keyboard navigation (↑↓ move, Enter switch, Delete remove, Esc close).
 - Organize sessions into groups.
-- Customizable status-bar click / middle-click / right-click / modified-click actions —
-  clicking the status bar opens the session manager (add/select/delete sessions) by default.
+- Customizable status-bar click / middle-click / right-click actions, each with
+  Alt/Cmd(Ctrl)/Shift modifier variants (12 slots total) — reassign any of them to any
+  action via the right-click "Customize click actions" menu. Clicking the status bar
+  opens the session manager by default; ⌘-click saves the active session; ⌥-click
+  cycles to the next session.
 - Scroll on the status bar to switch sessions.
 - **Set the status-bar session-name colour**, with separate settings colour pickers for
   light and dark themes.
@@ -64,9 +70,10 @@ travel cleanly between devices under Obsidian Sync.
 Open the command palette and search for *Workspace Manager* to switch sessions,
 save the current layout, create a blank session, open the session manager, or
 restore version history. Bind any of these to hotkeys. The status bar shows the
-active group and session; click it to open the session manager (add, switch to,
-or delete sessions), or reconfigure the click / middle-click / right-click
-actions in settings.
+active group and session; click it to open the session manager (filter, create,
+switch, rename, delete, and browse sessions by group tab), or right-click it and
+choose "Customize click actions" to reassign what any click / middle-click /
+right-click combination (plain, Alt, Cmd/Ctrl, or Shift) does.
 
 ## Architecture
 
