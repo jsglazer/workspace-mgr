@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'বর্তমান নোটের নাম সেশন হিসেবে সংরক্ষণ করুন',
+        noActiveMarkdownFile: 'কোনো সক্রিয় Markdown নোট নেই।',
+        savedCurrentNoteNameAsSession: function (n) { return 'বর্তমান নোট "' + n + '" সেশন হিসেবে সংরক্ষিত হয়েছে'; },
+        saveCurrentNoteNameAsSessionFailed: 'বর্তমান নোটের নাম সেশন হিসেবে সংরক্ষণ করা যায়নি।',
+};
+
 const main = {
 
         modalTitle: 'সেশন পরিচালনা',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'সেশন "' + n + '" ইতিমধ্যেই সক্রিয়'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'সেশন পুনরুদ্ধার',
+        settingsRestoreSidebars: 'সাইডবারও পুনরুদ্ধার করুন',
+        settingsRestoreSidebarsDesc: 'বন্ধ থাকলে, সেশন বদলানো বা পুনরুদ্ধারের সময় শুধু মূল সম্পাদক এলাকা পুনরুদ্ধার হবে এবং বর্তমান বাম ও ডান সাইডবার রাখা হবে।',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'ব্যাকআপ ও সংস্করণ ইতিহাস মুছুন',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++ ডেটা রিসেট করতে ব্যর্থ হয়েছে।',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'সেশন পুনরুদ্ধার',
-        settingsRestoreSidebars: 'সাইডবারও পুনরুদ্ধার করুন',
-        settingsRestoreSidebarsDesc: 'বন্ধ থাকলে, সেশন বদলানো বা পুনরুদ্ধারের সময় শুধু মূল সম্পাদক এলাকা পুনরুদ্ধার হবে এবং বর্তমান বাম ও ডান সাইডবার রাখা হবে।',
-};
-
-export const bn = Object.assign({}, main, reset, restore);
+export const bn = Object.assign({}, note, main, restore, reset);

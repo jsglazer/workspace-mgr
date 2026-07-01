@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'Remplacer « ' + n + ' » par la disposition actuelle ?'; },
+        cmdSaveCurrentLayoutToSession: 'Enregistrer la disposition actuelle dans une session...',
+        savedCurrentLayoutToSession: function (n) { return 'Disposition actuelle enregistrée dans « ' + n + ' »'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Sélectionnez une session à remplacer...',
+        contextSaveCurrentLayoutToThisSession: 'Enregistrer la disposition actuelle dans cette session',
+        cmdExportSessions: 'Exporter un instantané des sessions',
+        cmdImportSessions: 'Importer le dernier instantané des sessions',
+        cmdReloadCurrentWithoutSaving: 'Recharger la session en cours (sans enregistrer)',
+        reloadedSession: function (n) { return 'Session « ' + n + ' » rechargée'; },
+        defaultSessionName: 'par défaut',
+        nameSessionTitle: 'Enregistrer avec un nom de session',
+        nameSessionPlaceholder: 'Nom de la session...',
+        saveWithoutNaming: 'Enregistrer sans nommer',
+        sessionDataMigrated: 'Workspace++ : les données de session ont été déplacées vers .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++ : échec de la migration des données de session. Les données héritées sont conservées.',
+        localSettingsEnabled: 'Workspace++ : paramètres locaux du coffre activés.',
+        localSettingsDisabled: 'Workspace++ : paramètres locaux du coffre désactivés.',
+        localSettingsCopied: 'Workspace++ : paramètres globaux copiés vers les paramètres locaux du coffre.',
+        localSettingsLoadFailed: 'Workspace++ : impossible de charger les paramètres locaux du coffre. Les paramètres globaux seront utilisés.',
+        localSettingsOperationFailed: 'Workspace++ : impossible de mettre à jour les paramètres locaux du coffre.',
+        exportSessionsDone: function (path) { return 'Workspace++ : sessions exportées vers ' + path; },
+        exportSessionsFailed: 'Workspace++ : échec de l’export des sessions.',
+        importSessionsDone: function (path) { return 'Workspace++ : sessions importées depuis ' + path; },
+        importSessionsNoFile: 'Workspace++ : aucun fichier exporté trouvé dans .workspace-plus-plus/exports.',
+        importSessionsFailed: 'Workspace++ : échec de l’import des sessions.',
+        settingsSectionAdvanced: 'Avancé',
+        settingsSectionReset: 'Réinitialisation',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Liste et recherche des sessions',
+        settingsSectionSwitchCommands: 'Commandes de changement',
+        settingsSectionScrollSwitch: 'Changement par défilement',
+        settingsSubsectionSwitchSaving: 'Enregistrement lors du changement de session',
+        settingsSubsectionAutoSaveMode: 'Mode d’enregistrement automatique des sessions',
+        settingsSubsectionSwitchCommands: 'Commandes de changement de session',
+        settingsSubsectionScrollSwitch: 'Changement de session par défilement',
+        settingsSubsectionSwitchPreview: 'Aperçu avant le changement de session',
+        settingsStatusBarScrollPreset: 'Préréglage d’entrée de défilement',
+        settingsStatusBarScrollPresetDesc: 'Choisissez un préréglage adapté à votre appareil, ou passez à Personnalisé pour régler les valeurs manuellement.',
+        settingsStatusBarScrollPresetTrackpad: 'Pavé tactile',
+        settingsStatusBarScrollPresetNotchedWheel: 'Molette crantée de la souris',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Molette de souris libre',
+        settingsStatusBarScrollPresetCustom: 'Personnalisé',
+        settingsStatusBarScrollModifier: 'Touche modificatrice requise',
+        settingsStatusBarScrollModifierDesc: 'Choisissez la touche modificatrice à maintenir pendant le défilement sur l’élément de la barre d’état.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd ou Option', 'Ctrl ou Alt'),
+        settingsStatusBarScrollModifierNone: 'Aucune',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Cmd uniquement', 'Ctrl uniquement'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Option uniquement', 'Alt uniquement'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd ou Option', 'Ctrl ou Alt'),
+        settingsStatusBarScrollThreshold: 'Seuil de sensibilité',
+        settingsStatusBarScrollThresholdDesc: 'Plus la valeur est basse, plus le basculement est facile. Utilisé uniquement avec le préréglage Personnalisé.',
+        settingsStatusBarScrollCooldown: 'Délai d’attente',
+        settingsStatusBarScrollCooldownDesc: 'Temps minimal entre deux changements de session déclenchés par le défilement. Utilisé uniquement avec le préréglage Personnalisé.',
+        settingsStatusBarScrollResetWindow: 'Fenêtre de réinitialisation de l’accumulation',
+        settingsStatusBarScrollResetWindowDesc: 'Durée pendant laquelle les petits deltas de défilement restent cumulés avant réinitialisation. Utilisé uniquement avec le préréglage Personnalisé.',
+        settingsStatusBarScrollInvert: 'Inverser le sens du défilement',
+        settingsStatusBarScrollInvertDesc: 'Inverse le sens précédent/suivant pour le changement de session par défilement dans la barre d’état.',
+        settingsUseLocalSettings: 'Utiliser des paramètres locaux du coffre',
+        settingsUseLocalSettingsDesc: 'Activez cette option si vous synchronisez .obsidian entre plusieurs coffres (par exemple avec Settings Profiles) et souhaitez des réglages Workspace++ différents par coffre.',
+        settingsCopyGlobalToLocal: 'Copier les paramètres globaux vers ce coffre',
+        settingsCopyGlobalToLocalDesc: 'Écrase les paramètres locaux du coffre avec les paramètres globaux actuels.',
+        settingsCopyGlobalToLocalBtn: 'Copier',
+        settingsResetLocalSettings: 'Réinitialiser les paramètres locaux du coffre',
+        settingsResetLocalSettingsDesc: 'Réinitialise les paramètres locaux du coffre vers les paramètres globaux.',
+        settingsResetLocalSettingsBtn: 'Réinitialiser local',
+        settingsAdvancedStorageSubsection: 'Comportement du stockage',
+        settingsAdvancedTransferSubsection: 'Transfert des données',
+        settingsDeveloperSection: 'Outils développeur',
+        settingsStorageDiagnostics: 'Diagnostic du stockage',
+        settingsStorageDiagnosticsDesc: 'Informations de stockage actuellement utilisées par Workspace++.',
+        settingsStorageFieldSessions: 'Fichier des sessions',
+        settingsStorageFieldSessionsBackup: 'Sauvegarde des sessions',
+        settingsStorageFieldLocalSettings: 'Fichier des paramètres locaux',
+        settingsStorageFieldGlobalSettings: 'Fichier des paramètres globaux',
+        settingsStorageFieldSessionCount: 'Nombre de sessions',
+        settingsStorageFieldUpdatedAt: 'Mis à jour le',
+        settingsExportSessions: 'Exporter les sessions',
+        settingsExportSessionsDesc: 'Enregistre un instantané dans .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Exporter',
+        settingsImportSessions: 'Importer les sessions',
+        settingsImportSessionsDesc: 'Importe le dernier instantané depuis .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Importer le dernier',
+        confirmImportSessions: 'Importer les dernières sessions exportées ? Les sessions actuelles seront remplacées.',
+        settingsResetSettings: 'Réinitialiser les paramètres',
+        settingsResetSettingsDesc: 'Réinitialise les paramètres Workspace++ par défaut dans la portée actuelle.',
+        settingsResetSettingsBtn: 'Réinitialiser les paramètres',
+        confirmResetSettings: 'Réinitialiser les paramètres Workspace++ par défaut ?',
+        resetSettingsDone: 'Les paramètres Workspace++ ont été réinitialisés.',
+        resetSettingsFailed: 'Échec de la réinitialisation des paramètres Workspace++.',
+        settingsResetSessionsAndSettings: 'Réinitialiser sessions et paramètres',
+        settingsResetSessionsAndSettingsDesc: 'Réinitialise à la fois les sessions enregistrées et les paramètres Workspace++.',
+        settingsResetSessionsAndSettingsBtn: 'Réinitialiser les deux',
+        confirmResetSessionsAndSettings: 'Réinitialiser les sessions et les paramètres ? Cette action est irréversible.',
+        resetSessionsAndSettingsDone: 'Les sessions et les paramètres ont été réinitialisés.',
+        resetSessionsAndSettingsFailed: 'Échec de la réinitialisation des sessions et des paramètres.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Enregistrer le nom de la note comme session',
+        noActiveMarkdownFile: 'Aucune note Markdown active.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Note actuelle enregistrée comme session « ' + n + ' »'; },
+        saveCurrentNoteNameAsSessionFailed: 'Impossible d’enregistrer le nom de la note comme session.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + molette pour changer de session',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'La session \u00ab\u00a0' + n + '\u00a0\u00bb est d\u00e9j\u00e0 active'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Restauration des sessions',
+        settingsRestoreSidebars: 'Restaurer les barres latérales',
+        settingsRestoreSidebarsDesc: 'Si désactivé, le changement ou la restauration d’une session ne restaure que la zone principale de l’éditeur et conserve les barres latérales gauche et droite actuelles.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Supprimer sauvegardes et historique',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Échec de la réinitialisation des données Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Restauration des sessions',
-        settingsRestoreSidebars: 'Restaurer les barres latérales',
-        settingsRestoreSidebarsDesc: 'Si désactivé, le changement ou la restauration d’une session ne restaure que la zone principale de l’éditeur et conserve les barres latérales gauche et droite actuelles.',
-};
-
-export const fr = Object.assign({}, main, reset, restore);
+export const fr = Object.assign({}, extended, note, main, restore, reset);

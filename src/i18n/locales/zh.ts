@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return '用当前布局覆盖“' + n + '”？'; },
+        cmdSaveCurrentLayoutToSession: '将当前布局保存到会话...',
+        savedCurrentLayoutToSession: function (n) { return '已将当前布局保存到“' + n + '”'; },
+        saveCurrentLayoutToSessionPlaceholder: '选择要覆盖的会话...',
+        contextSaveCurrentLayoutToThisSession: '将当前布局保存到此会话',
+        cmdExportSessions: '导出会话快照',
+        cmdImportSessions: '导入最新会话快照',
+        cmdReloadCurrentWithoutSaving: '重新加载当前会话（不保存）',
+        reloadedSession: function (n) { return '已重新加载会话“' + n + '”'; },
+        defaultSessionName: '默认',
+        nameSessionTitle: '命名并保存会话',
+        nameSessionPlaceholder: '会话名称...',
+        saveWithoutNaming: '不命名直接保存',
+        sessionDataMigrated: 'Workspace++: 会话数据已迁移到 .workspace-plus-plus/sessions.json。',
+        sessionDataMigrationFailed: 'Workspace++: 会话数据迁移失败。旧版数据已保留。',
+        localSettingsEnabled: 'Workspace++: 已启用 Vault 本地设置。',
+        localSettingsDisabled: 'Workspace++: 已禁用 Vault 本地设置。',
+        localSettingsCopied: 'Workspace++: 已将全局设置复制到 Vault 本地设置。',
+        localSettingsLoadFailed: 'Workspace++: 无法加载 Vault 本地设置。将使用全局设置。',
+        localSettingsOperationFailed: 'Workspace++: 更新 Vault 本地设置失败。',
+        exportSessionsDone: function (path) { return 'Workspace++: 已将会话导出到 ' + path; },
+        exportSessionsFailed: 'Workspace++: 导出会话失败。',
+        importSessionsDone: function (path) { return 'Workspace++: 已从 ' + path + ' 导入会话。'; },
+        importSessionsNoFile: 'Workspace++: 在 .workspace-plus-plus/exports 中未找到导出文件。',
+        importSessionsFailed: 'Workspace++: 导入会话失败。',
+        settingsSectionAdvanced: '高级',
+        settingsSectionReset: '重置',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: '会话列表与搜索',
+        settingsSectionSwitchCommands: '切换命令',
+        settingsSectionScrollSwitch: '滚动切换',
+        settingsSubsectionSwitchSaving: '切换会话时的保存',
+        settingsSubsectionAutoSaveMode: '会话自动保存模式',
+        settingsSubsectionSwitchCommands: '会话切换命令',
+        settingsSubsectionScrollSwitch: '通过滚动切换会话',
+        settingsSubsectionSwitchPreview: '切换会话前预览',
+        settingsStatusBarScrollPreset: '滚动输入预设',
+        settingsStatusBarScrollPresetDesc: '选择适合你设备的预设，或切换到“自定义”自行调整数值。',
+        settingsStatusBarScrollPresetTrackpad: '触控板',
+        settingsStatusBarScrollPresetNotchedWheel: '有刻度鼠标滚轮',
+        settingsStatusBarScrollPresetFreeSpinWheel: '自由滚动鼠标滚轮',
+        settingsStatusBarScrollPresetCustom: '自定义',
+        settingsStatusBarScrollModifier: '所需修饰键',
+        settingsStatusBarScrollModifierDesc: '选择在状态栏项目上滚动时必须按住的修饰键。',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd 或 Option', 'Ctrl 或 Alt'),
+        settingsStatusBarScrollModifierNone: '无',
+        settingsStatusBarScrollModifierModOnly: platformLabel('仅 Cmd', '仅 Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('仅 Option', '仅 Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd 或 Option', 'Ctrl 或 Alt'),
+        settingsStatusBarScrollThreshold: '灵敏度阈值',
+        settingsStatusBarScrollThresholdDesc: '值越小，越容易触发切换。仅在“自定义”预设下使用。',
+        settingsStatusBarScrollCooldown: '冷却时间',
+        settingsStatusBarScrollCooldownDesc: '两次滚动触发的会话切换之间的最短间隔。仅在“自定义”预设下使用。',
+        settingsStatusBarScrollResetWindow: '累积重置窗口',
+        settingsStatusBarScrollResetWindowDesc: '在重置前，将较小滚动增量持续合并的时长。仅在“自定义”预设下使用。',
+        settingsStatusBarScrollInvert: '反转滚动方向',
+        settingsStatusBarScrollInvertDesc: '反转状态栏滚动切换时的上一项/下一项方向。',
+        settingsUseLocalSettings: '使用 Vault 本地设置',
+        settingsUseLocalSettingsDesc: '如果你在多个 Vault 之间同步 .obsidian（例如使用 Settings Profiles），并希望 Workspace++ 设置按 Vault 分开保存，请开启此项。',
+        settingsCopyGlobalToLocal: '将全局设置复制到此 Vault',
+        settingsCopyGlobalToLocalDesc: '用当前全局设置覆盖 Vault 本地设置。',
+        settingsCopyGlobalToLocalBtn: '复制',
+        settingsResetLocalSettings: '重置 Vault 本地设置',
+        settingsResetLocalSettingsDesc: '将 Vault 本地设置重置为全局设置。',
+        settingsResetLocalSettingsBtn: '重置本地',
+        settingsAdvancedStorageSubsection: '存储行为',
+        settingsAdvancedTransferSubsection: '数据迁移',
+        settingsDeveloperSection: '开发者工具',
+        settingsStorageDiagnostics: '存储诊断',
+        settingsStorageDiagnosticsDesc: 'Workspace++ 当前使用的存储信息。',
+        settingsStorageFieldSessions: '会话文件',
+        settingsStorageFieldSessionsBackup: '会话备份',
+        settingsStorageFieldLocalSettings: '本地设置文件',
+        settingsStorageFieldGlobalSettings: '全局设置文件',
+        settingsStorageFieldSessionCount: '会话数量',
+        settingsStorageFieldUpdatedAt: '更新时间',
+        settingsExportSessions: '导出会话',
+        settingsExportSessionsDesc: '将快照保存到 .workspace-plus-plus/exports。',
+        settingsExportSessionsBtn: '导出',
+        settingsImportSessions: '导入会话',
+        settingsImportSessionsDesc: '从 .workspace-plus-plus/exports 导入最新快照。',
+        settingsImportSessionsBtn: '导入最新',
+        confirmImportSessions: '要导入最新导出的会话吗？当前会话将被替换。',
+        settingsResetSettings: '重置设置',
+        settingsResetSettingsDesc: '将当前设置范围中的 Workspace++ 设置恢复为默认值。',
+        settingsResetSettingsBtn: '重置设置',
+        confirmResetSettings: '要将 Workspace++ 设置重置为默认值吗？',
+        resetSettingsDone: 'Workspace++ 设置已重置。',
+        resetSettingsFailed: '重置 Workspace++ 设置失败。',
+        settingsResetSessionsAndSettings: '重置会话和设置',
+        settingsResetSessionsAndSettingsDesc: '一次性重置已保存会话和 Workspace++ 设置。',
+        settingsResetSessionsAndSettingsBtn: '全部重置',
+        confirmResetSessionsAndSettings: '要同时重置会话和设置吗？此操作无法撤销。',
+        resetSessionsAndSettingsDone: '会话和设置已重置。',
+        resetSessionsAndSettingsFailed: '重置会话和设置失败。',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: '将当前笔记名保存为会话',
+        noActiveMarkdownFile: '没有活动的 Markdown 笔记。',
+        savedCurrentNoteNameAsSession: function (n) { return '已将当前笔记保存为会话“' + n + '”'; },
+        saveCurrentNoteNameAsSessionFailed: '无法将当前笔记名保存为会话。',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: '按住 Ctrl/Cmd 并滚动以切换会话',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u4f1a\u8bdd\u201c' + n + '\u201d\u5df2\u5904\u4e8e\u6d3b\u52a8\u72b6\u6001'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: '会话恢复',
+        settingsRestoreSidebars: '恢复侧边栏',
+        settingsRestoreSidebarsDesc: '关闭后，切换或恢复会话时只恢复主编辑区，并保留当前左右侧边栏。',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: '删除备份和版本历史',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: '重置 Workspace++ 数据失败。',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: '会话恢复',
-        settingsRestoreSidebars: '恢复侧边栏',
-        settingsRestoreSidebarsDesc: '关闭后，切换或恢复会话时只恢复主编辑区，并保留当前左右侧边栏。',
-};
-
-export const zh = Object.assign({}, main, reset, restore);
+export const zh = Object.assign({}, extended, note, main, restore, reset);

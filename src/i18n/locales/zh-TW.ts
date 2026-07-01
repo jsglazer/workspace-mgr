@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return '要用目前佈局覆寫「' + n + '」嗎？'; },
+        cmdSaveCurrentLayoutToSession: '將目前佈局儲存到工作階段...',
+        savedCurrentLayoutToSession: function (n) { return '已將目前佈局儲存到「' + n + '」'; },
+        saveCurrentLayoutToSessionPlaceholder: '選擇要覆寫的工作階段...',
+        contextSaveCurrentLayoutToThisSession: '將目前佈局儲存到此工作階段',
+        cmdExportSessions: '匯出工作階段快照',
+        cmdImportSessions: '匯入最新工作階段快照',
+        cmdReloadCurrentWithoutSaving: '重新載入目前工作階段（不儲存）',
+        reloadedSession: function (n) { return '已重新載入工作階段「' + n + '」'; },
+        defaultSessionName: '預設',
+        nameSessionTitle: '命名並儲存工作階段',
+        nameSessionPlaceholder: '工作階段名稱...',
+        saveWithoutNaming: '不命名直接儲存',
+        sessionDataMigrated: 'Workspace++: 工作階段資料已移至 .workspace-plus-plus/sessions.json。',
+        sessionDataMigrationFailed: 'Workspace++: 工作階段資料移轉失敗。舊版資料已保留。',
+        localSettingsEnabled: 'Workspace++: 已啟用 Vault 本機設定。',
+        localSettingsDisabled: 'Workspace++: 已停用 Vault 本機設定。',
+        localSettingsCopied: 'Workspace++: 已將全域設定複製到 Vault 本機設定。',
+        localSettingsLoadFailed: 'Workspace++: 無法載入 Vault 本機設定。將改用全域設定。',
+        localSettingsOperationFailed: 'Workspace++: 更新 Vault 本機設定失敗。',
+        exportSessionsDone: function (path) { return 'Workspace++: 已將工作階段匯出到 ' + path; },
+        exportSessionsFailed: 'Workspace++: 匯出工作階段失敗。',
+        importSessionsDone: function (path) { return 'Workspace++: 已從 ' + path + ' 匯入工作階段。'; },
+        importSessionsNoFile: 'Workspace++: 在 .workspace-plus-plus/exports 中找不到匯出檔案。',
+        importSessionsFailed: 'Workspace++: 匯入工作階段失敗。',
+        settingsSectionAdvanced: '進階',
+        settingsSectionReset: '重設',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: '工作階段清單與搜尋',
+        settingsSectionSwitchCommands: '切換命令',
+        settingsSectionScrollSwitch: '滾動切換',
+        settingsSubsectionSwitchSaving: '切換工作階段時的儲存',
+        settingsSubsectionAutoSaveMode: '工作階段自動儲存模式',
+        settingsSubsectionSwitchCommands: '工作階段切換命令',
+        settingsSubsectionScrollSwitch: '透過滾動切換工作階段',
+        settingsSubsectionSwitchPreview: '切換工作階段前預覽',
+        settingsStatusBarScrollPreset: '滾動輸入預設',
+        settingsStatusBarScrollPresetDesc: '選擇適合你裝置的預設，或切換到「自訂」自行調整數值。',
+        settingsStatusBarScrollPresetTrackpad: '觸控板',
+        settingsStatusBarScrollPresetNotchedWheel: '有段落感的滑鼠滾輪',
+        settingsStatusBarScrollPresetFreeSpinWheel: '自由旋轉滑鼠滾輪',
+        settingsStatusBarScrollPresetCustom: '自訂',
+        settingsStatusBarScrollModifier: '需要的修飾鍵',
+        settingsStatusBarScrollModifierDesc: '選擇在狀態列項目上滾動時必須按住的修飾鍵。',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd 或 Option', 'Ctrl 或 Alt'),
+        settingsStatusBarScrollModifierNone: '無',
+        settingsStatusBarScrollModifierModOnly: platformLabel('僅 Cmd', '僅 Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('僅 Option', '僅 Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd 或 Option', 'Ctrl 或 Alt'),
+        settingsStatusBarScrollThreshold: '靈敏度門檻',
+        settingsStatusBarScrollThresholdDesc: '數值越小，越容易切換。僅在「自訂」預設時使用。',
+        settingsStatusBarScrollCooldown: '冷卻時間',
+        settingsStatusBarScrollCooldownDesc: '兩次由滾動觸發的工作階段切換之間的最短間隔。僅在「自訂」預設時使用。',
+        settingsStatusBarScrollResetWindow: '累積重設時間窗',
+        settingsStatusBarScrollResetWindowDesc: '在重設前，持續累積較小滾動量的時間。僅在「自訂」預設時使用。',
+        settingsStatusBarScrollInvert: '反轉滾動方向',
+        settingsStatusBarScrollInvertDesc: '反轉狀態列滾動切換時上一個/下一個的方向。',
+        settingsUseLocalSettings: '使用 Vault 本機設定',
+        settingsUseLocalSettingsDesc: '若你在多個 Vault 之間同步 .obsidian（例如使用 Settings Profiles），並希望 Workspace++ 設定在各 Vault 分開保存，請啟用此項。',
+        settingsCopyGlobalToLocal: '將全域設定複製到此 Vault',
+        settingsCopyGlobalToLocalDesc: '以目前全域設定覆寫 Vault 本機設定。',
+        settingsCopyGlobalToLocalBtn: '複製',
+        settingsResetLocalSettings: '重設 Vault 本機設定',
+        settingsResetLocalSettingsDesc: '將 Vault 本機設定重設回全域設定。',
+        settingsResetLocalSettingsBtn: '重設本機',
+        settingsAdvancedStorageSubsection: '儲存行為',
+        settingsAdvancedTransferSubsection: '資料移轉',
+        settingsDeveloperSection: '開發者工具',
+        settingsStorageDiagnostics: '儲存診斷',
+        settingsStorageDiagnosticsDesc: 'Workspace++ 目前使用的儲存資訊。',
+        settingsStorageFieldSessions: '工作階段檔案',
+        settingsStorageFieldSessionsBackup: '工作階段備份',
+        settingsStorageFieldLocalSettings: '本機設定檔案',
+        settingsStorageFieldGlobalSettings: '全域設定檔案',
+        settingsStorageFieldSessionCount: '工作階段數量',
+        settingsStorageFieldUpdatedAt: '更新時間',
+        settingsExportSessions: '匯出工作階段',
+        settingsExportSessionsDesc: '將快照儲存至 .workspace-plus-plus/exports。',
+        settingsExportSessionsBtn: '匯出',
+        settingsImportSessions: '匯入工作階段',
+        settingsImportSessionsDesc: '從 .workspace-plus-plus/exports 匯入最新快照。',
+        settingsImportSessionsBtn: '匯入最新',
+        confirmImportSessions: '要匯入最新匯出的工作階段嗎？目前工作階段將被取代。',
+        settingsResetSettings: '重設設定',
+        settingsResetSettingsDesc: '將目前設定範圍內的 Workspace++ 設定還原為預設值。',
+        settingsResetSettingsBtn: '重設設定',
+        confirmResetSettings: '要將 Workspace++ 設定重設為預設值嗎？',
+        resetSettingsDone: 'Workspace++ 設定已重設。',
+        resetSettingsFailed: '重設 Workspace++ 設定失敗。',
+        settingsResetSessionsAndSettings: '重設工作階段與設定',
+        settingsResetSessionsAndSettingsDesc: '一次重設已儲存的工作階段與 Workspace++ 設定。',
+        settingsResetSessionsAndSettingsBtn: '全部重設',
+        confirmResetSessionsAndSettings: '要同時重設工作階段與設定嗎？此操作無法復原。',
+        resetSessionsAndSettingsDone: '工作階段與設定已重設。',
+        resetSessionsAndSettingsFailed: '重設工作階段與設定失敗。',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: '將目前筆記名稱儲存為工作階段',
+        noActiveMarkdownFile: '沒有作用中的 Markdown 筆記。',
+        savedCurrentNoteNameAsSession: function (n) { return '已將目前筆記儲存為工作階段「' + n + '」'; },
+        saveCurrentNoteNameAsSessionFailed: '無法將目前筆記名稱儲存為工作階段。',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: '按住 Ctrl/Cmd 並捲動以切換工作階段',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u5de5\u4f5c\u968e\u6bb5\u300c' + n + '\u300d\u5df2\u8655\u65bc\u6d3b\u52d5\u72c0\u614b'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: '工作階段還原',
+        settingsRestoreSidebars: '還原側邊欄',
+        settingsRestoreSidebarsDesc: '關閉後，切換或還原工作階段時只還原主要編輯區，並保留目前左右側邊欄。',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: '刪除備份和版本歷史',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: '重設 Workspace++ 資料失敗。',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: '工作階段還原',
-        settingsRestoreSidebars: '還原側邊欄',
-        settingsRestoreSidebarsDesc: '關閉後，切換或還原工作階段時只還原主要編輯區，並保留目前左右側邊欄。',
-};
-
-export const zh_TW = Object.assign({}, main, reset, restore);
+export const zh_TW = Object.assign({}, extended, note, main, restore, reset);

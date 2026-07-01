@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'Sobrescrever "' + n + '" com o layout atual?'; },
+        cmdSaveCurrentLayoutToSession: 'Salvar layout atual em uma sessão...',
+        savedCurrentLayoutToSession: function (n) { return 'Layout atual salvo em "' + n + '"'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Selecione uma sessão para sobrescrever...',
+        contextSaveCurrentLayoutToThisSession: 'Salvar layout atual nesta sessão',
+        cmdExportSessions: 'Exportar snapshot de sessões',
+        cmdImportSessions: 'Importar snapshot mais recente de sessões',
+        cmdReloadCurrentWithoutSaving: 'Recarregar sessão atual (sem salvar)',
+        reloadedSession: function (n) { return 'Sessão “' + n + '” recarregada'; },
+        defaultSessionName: 'padrão',
+        nameSessionTitle: 'Salvar com nome da sessão',
+        nameSessionPlaceholder: 'Nome da sessão...',
+        saveWithoutNaming: 'Salvar sem nomear',
+        sessionDataMigrated: 'Workspace++: Os dados de sessão foram movidos para .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++: Falha ao migrar dados de sessão. Os dados legados foram mantidos.',
+        localSettingsEnabled: 'Workspace++: Configurações locais do vault ativadas.',
+        localSettingsDisabled: 'Workspace++: Configurações locais do vault desativadas.',
+        localSettingsCopied: 'Workspace++: Configurações globais copiadas para as configurações locais do vault.',
+        localSettingsLoadFailed: 'Workspace++: Falha ao carregar configurações locais do vault. Serão usadas as configurações globais.',
+        localSettingsOperationFailed: 'Workspace++: Falha ao atualizar configurações locais do vault.',
+        exportSessionsDone: function (path) { return 'Workspace++: Sessões exportadas para ' + path; },
+        exportSessionsFailed: 'Workspace++: Falha ao exportar sessões.',
+        importSessionsDone: function (path) { return 'Workspace++: Sessões importadas de ' + path; },
+        importSessionsNoFile: 'Workspace++: Nenhum arquivo exportado encontrado em .workspace-plus-plus/exports.',
+        importSessionsFailed: 'Workspace++: Falha ao importar sessões.',
+        settingsSectionAdvanced: 'Avançado',
+        settingsSectionReset: 'Redefinir',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Lista e pesquisa de sessões',
+        settingsSectionSwitchCommands: 'Comandos de alternância',
+        settingsSectionScrollSwitch: 'Alternância por rolagem',
+        settingsSubsectionSwitchSaving: 'Salvar ao alternar sessões',
+        settingsSubsectionAutoSaveMode: 'Modo de salvamento automático de sessões',
+        settingsSubsectionSwitchCommands: 'Comandos de alternância de sessões',
+        settingsSubsectionScrollSwitch: 'Troca de sessões com rolagem',
+        settingsSubsectionSwitchPreview: 'Pré-visualização antes de alternar sessões',
+        settingsStatusBarScrollPreset: 'Predefinição de entrada de rolagem',
+        settingsStatusBarScrollPresetDesc: 'Escolha uma predefinição ajustada ao seu dispositivo ou mude para Personalizado para ajustar os valores manualmente.',
+        settingsStatusBarScrollPresetTrackpad: 'Touchpad',
+        settingsStatusBarScrollPresetNotchedWheel: 'Roda do mouse com entalhes',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Roda do mouse de giro livre',
+        settingsStatusBarScrollPresetCustom: 'Personalizado',
+        settingsStatusBarScrollModifier: 'Modificador obrigatório',
+        settingsStatusBarScrollModifierDesc: 'Escolha qual modificador deve ser mantido pressionado ao rolar sobre o item da barra de status.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd ou Option', 'Ctrl ou Alt'),
+        settingsStatusBarScrollModifierNone: 'Nenhum',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Somente Cmd', 'Somente Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Somente Option', 'Somente Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd ou Option', 'Ctrl ou Alt'),
+        settingsStatusBarScrollThreshold: 'Limite de sensibilidade',
+        settingsStatusBarScrollThresholdDesc: 'Valores menores facilitam a troca. Usado apenas quando a predefinição é Personalizado.',
+        settingsStatusBarScrollCooldown: 'Intervalo de espera',
+        settingsStatusBarScrollCooldownDesc: 'Tempo mínimo entre trocas de sessão acionadas por rolagem. Usado apenas quando a predefinição é Personalizado.',
+        settingsStatusBarScrollResetWindow: 'Janela de redefinição do acúmulo',
+        settingsStatusBarScrollResetWindowDesc: 'Por quanto tempo pequenos deltas de rolagem continuam sendo acumulados antes de redefinir. Usado apenas quando a predefinição é Personalizado.',
+        settingsStatusBarScrollInvert: 'Inverter direção da rolagem',
+        settingsStatusBarScrollInvertDesc: 'Inverte a direção anterior/próxima ao trocar sessões pela rolagem na barra de status.',
+        settingsUseLocalSettings: 'Usar configurações locais do vault',
+        settingsUseLocalSettingsDesc: 'Ative isto se você sincroniza .obsidian entre vários vaults (por exemplo, com Settings Profiles) e deseja manter as configurações do Workspace++ diferentes por vault.',
+        settingsCopyGlobalToLocal: 'Copiar configurações globais para este vault',
+        settingsCopyGlobalToLocalDesc: 'Substitui as configurações locais do vault pelas configurações globais atuais.',
+        settingsCopyGlobalToLocalBtn: 'Copiar',
+        settingsResetLocalSettings: 'Redefinir configurações locais do vault',
+        settingsResetLocalSettingsDesc: 'Redefine as configurações locais do vault para as configurações globais.',
+        settingsResetLocalSettingsBtn: 'Redefinir local',
+        settingsAdvancedStorageSubsection: 'Comportamento de armazenamento',
+        settingsAdvancedTransferSubsection: 'Transferência de dados',
+        settingsDeveloperSection: 'Ferramentas de desenvolvedor',
+        settingsStorageDiagnostics: 'Diagnóstico de armazenamento',
+        settingsStorageDiagnosticsDesc: 'Detalhes de armazenamento usados atualmente pelo Workspace++.',
+        settingsStorageFieldSessions: 'Arquivo de sessões',
+        settingsStorageFieldSessionsBackup: 'Backup de sessões',
+        settingsStorageFieldLocalSettings: 'Arquivo de configurações locais',
+        settingsStorageFieldGlobalSettings: 'Arquivo de configurações globais',
+        settingsStorageFieldSessionCount: 'Quantidade de sessões',
+        settingsStorageFieldUpdatedAt: 'Atualizado em',
+        settingsExportSessions: 'Exportar sessões',
+        settingsExportSessionsDesc: 'Salvar um snapshot em .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Exportar',
+        settingsImportSessions: 'Importar sessões',
+        settingsImportSessionsDesc: 'Importar o snapshot mais recente de .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Importar mais recente',
+        confirmImportSessions: 'Importar as sessões exportadas mais recentes? As sessões atuais serão substituídas.',
+        settingsResetSettings: 'Redefinir configurações',
+        settingsResetSettingsDesc: 'Redefine as configurações do Workspace++ para o padrão no escopo de configuração atual.',
+        settingsResetSettingsBtn: 'Redefinir configurações',
+        confirmResetSettings: 'Redefinir configurações do Workspace++ para o padrão?',
+        resetSettingsDone: 'As configurações do Workspace++ foram redefinidas.',
+        resetSettingsFailed: 'Falha ao redefinir as configurações do Workspace++.',
+        settingsResetSessionsAndSettings: 'Redefinir sessões e configurações',
+        settingsResetSessionsAndSettingsDesc: 'Redefine sessões salvas e configurações do Workspace++ de uma vez.',
+        settingsResetSessionsAndSettingsBtn: 'Redefinir ambos',
+        confirmResetSessionsAndSettings: 'Redefinir sessões e configurações? Esta ação não pode ser desfeita.',
+        resetSessionsAndSettingsDone: 'Sessões e configurações foram redefinidas.',
+        resetSessionsAndSettingsFailed: 'Falha ao redefinir sessões e configurações.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Salvar nome da nota atual como sessão',
+        noActiveMarkdownFile: 'Nenhuma nota Markdown ativa.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Nota atual salva como sessão "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Falha ao salvar o nome da nota atual como sessão.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + rolagem para trocar de sessão',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'A sess\u00e3o \u201c' + n + '\u201d j\u00e1 est\u00e1 ativa'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Restauração de sessões',
+        settingsRestoreSidebars: 'Restaurar barras laterais',
+        settingsRestoreSidebarsDesc: 'Quando desativado, trocar ou restaurar uma sessão restaura apenas a área principal do editor e mantém as barras laterais esquerda e direita atuais.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Excluir backups e histórico de versões',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Falha ao redefinir os dados do Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Restauração de sessões',
-        settingsRestoreSidebars: 'Restaurar barras laterais',
-        settingsRestoreSidebarsDesc: 'Quando desativado, trocar ou restaurar uma sessão restaura apenas a área principal do editor e mantém as barras laterais esquerda e direita atuais.',
-};
-
-export const pt = Object.assign({}, main, reset, restore);
+export const pt = Object.assign({}, extended, note, main, restore, reset);

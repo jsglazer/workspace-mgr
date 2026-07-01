@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'ذخیره نام یادداشت فعلی به عنوان نشست',
+        noActiveMarkdownFile: 'هیچ یادداشت Markdown فعالی وجود ندارد.',
+        savedCurrentNoteNameAsSession: function (n) { return 'یادداشت فعلی به عنوان نشست "' + n + '" ذخیره شد'; },
+        saveCurrentNoteNameAsSessionFailed: 'ذخیره نام یادداشت فعلی به عنوان نشست ناموفق بود.',
+};
+
 const main = {
 
         modalTitle: 'مدیریت نشست‌ها',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'نشست "' + n + '" از قبل فعال است'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'بازیابی نشست',
+        settingsRestoreSidebars: 'بازیابی نوارهای کناری',
+        settingsRestoreSidebarsDesc: 'وقتی خاموش باشد، تغییر یا بازیابی نشست فقط ناحیه اصلی ویرایشگر را بازیابی می‌کند و نوارهای کناری چپ و راست فعلی را نگه می‌دارد.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'حذف پشتیبان‌ها و تاریخچه نسخه‌ها',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'بازنشانی داده‌های Workspace++ ناموفق بود.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'بازیابی نشست',
-        settingsRestoreSidebars: 'بازیابی نوارهای کناری',
-        settingsRestoreSidebarsDesc: 'وقتی خاموش باشد، تغییر یا بازیابی نشست فقط ناحیه اصلی ویرایشگر را بازیابی می‌کند و نوارهای کناری چپ و راست فعلی را نگه می‌دارد.',
-};
-
-export const fa = Object.assign({}, main, reset, restore);
+export const fa = Object.assign({}, note, main, restore, reset);

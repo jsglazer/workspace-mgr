@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Save current note name as session',
+        noActiveMarkdownFile: 'No active Markdown note.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Saved current note as session "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Failed to save current note name as session.',
+};
+
 const main = {
 
         modalTitle: 'Manage sessions',
@@ -357,6 +365,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Session "' + n + '" is already active'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Session restore',
+        settingsRestoreSidebars: 'Restore sidebars',
+        settingsRestoreSidebarsDesc: 'When off, switching or restoring a session restores only the main editor area and keeps the current left and right sidebars.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Delete backups and version history',
@@ -374,11 +389,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Failed to reset Workspace++ data.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Session restore',
-        settingsRestoreSidebars: 'Restore sidebars',
-        settingsRestoreSidebarsDesc: 'When off, switching or restoring a session restores only the main editor area and keeps the current left and right sidebars.',
-};
-
-export const en = Object.assign({}, main, reset, restore);
+export const en = Object.assign({}, note, main, restore, reset);

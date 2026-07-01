@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'บันทึกชื่อโน้ตปัจจุบันเป็นเซสชัน',
+        noActiveMarkdownFile: 'ไม่มีโน้ต Markdown ที่ใช้งานอยู่',
+        savedCurrentNoteNameAsSession: function (n) { return 'บันทึกโน้ตปัจจุบันเป็นเซสชัน "' + n + '" แล้ว'; },
+        saveCurrentNoteNameAsSessionFailed: 'ไม่สามารถบันทึกชื่อโน้ตปัจจุบันเป็นเซสชันได้',
+};
+
 const main = {
 
         modalTitle: 'จัดการเซสชัน',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'เซสชัน "' + n + '" ใช้งานอยู่แล้ว'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'การกู้คืนเซสชัน',
+        settingsRestoreSidebars: 'กู้คืนแถบด้านข้าง',
+        settingsRestoreSidebarsDesc: 'เมื่อปิด การสลับหรือกู้คืนเซสชันจะกู้คืนเฉพาะพื้นที่แก้ไขหลัก และคงแถบด้านข้างซ้ายและขวาปัจจุบันไว้',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'ลบข้อมูลสำรองและประวัติเวอร์ชัน',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'ไม่สามารถรีเซ็ตข้อมูล Workspace++ ได้',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'การกู้คืนเซสชัน',
-        settingsRestoreSidebars: 'กู้คืนแถบด้านข้าง',
-        settingsRestoreSidebarsDesc: 'เมื่อปิด การสลับหรือกู้คืนเซสชันจะกู้คืนเฉพาะพื้นที่แก้ไขหลัก และคงแถบด้านข้างซ้ายและขวาปัจจุบันไว้',
-};
-
-export const th = Object.assign({}, main, reset, restore);
+export const th = Object.assign({}, note, main, restore, reset);

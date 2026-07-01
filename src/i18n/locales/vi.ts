@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Lưu tên ghi chú hiện tại thành phiên',
+        noActiveMarkdownFile: 'Không có ghi chú Markdown đang hoạt động.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Đã lưu ghi chú hiện tại thành phiên "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Không thể lưu tên ghi chú hiện tại thành phiên.',
+};
+
 const main = {
 
         modalTitle: 'Quản lý phiên làm việc',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Phiên "' + n + '" đã là phiên đang hoạt động'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Khôi phục phiên',
+        settingsRestoreSidebars: 'Khôi phục thanh bên',
+        settingsRestoreSidebarsDesc: 'Khi tắt, việc chuyển hoặc khôi phục phiên chỉ khôi phục vùng soạn thảo chính và giữ nguyên thanh bên trái và phải hiện tại.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Xóa bản sao lưu và lịch sử phiên bản',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Không thể đặt lại dữ liệu Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Khôi phục phiên',
-        settingsRestoreSidebars: 'Khôi phục thanh bên',
-        settingsRestoreSidebarsDesc: 'Khi tắt, việc chuyển hoặc khôi phục phiên chỉ khôi phục vùng soạn thảo chính và giữ nguyên thanh bên trái và phải hiện tại.',
-};
-
-export const vi = Object.assign({}, main, reset, restore);
+export const vi = Object.assign({}, note, main, restore, reset);

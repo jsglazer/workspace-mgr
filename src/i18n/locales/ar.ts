@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'الكتابة فوق "' + n + '" بالتخطيط الحالي؟'; },
+        cmdSaveCurrentLayoutToSession: 'حفظ التخطيط الحالي في جلسة...',
+        savedCurrentLayoutToSession: function (n) { return 'تم حفظ التخطيط الحالي في "' + n + '"'; },
+        saveCurrentLayoutToSessionPlaceholder: 'اختر جلسة للكتابة فوقها...',
+        contextSaveCurrentLayoutToThisSession: 'حفظ التخطيط الحالي في هذه الجلسة',
+        cmdExportSessions: 'تصدير لقطة الجلسات',
+        cmdImportSessions: 'استيراد أحدث لقطة للجلسات',
+        cmdReloadCurrentWithoutSaving: 'إعادة تحميل الجلسة الحالية (بدون حفظ)',
+        reloadedSession: function (n) { return 'تمت إعادة تحميل الجلسة “' + n + '”'; },
+        defaultSessionName: 'الافتراضية',
+        nameSessionTitle: 'حفظ باسم الجلسة',
+        nameSessionPlaceholder: 'اسم الجلسة...',
+        saveWithoutNaming: 'حفظ بدون تسمية',
+        sessionDataMigrated: 'Workspace++: تم نقل بيانات الجلسات إلى .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++: فشل نقل بيانات الجلسات. تم الاحتفاظ بالبيانات القديمة.',
+        localSettingsEnabled: 'Workspace++: تم تفعيل الإعدادات المحلية للمخزن.',
+        localSettingsDisabled: 'Workspace++: تم تعطيل الإعدادات المحلية للمخزن.',
+        localSettingsCopied: 'Workspace++: تم نسخ الإعدادات العامة إلى الإعدادات المحلية للمخزن.',
+        localSettingsLoadFailed: 'Workspace++: تعذر تحميل الإعدادات المحلية للمخزن. سيتم استخدام الإعدادات العامة.',
+        localSettingsOperationFailed: 'Workspace++: فشل تحديث الإعدادات المحلية للمخزن.',
+        exportSessionsDone: function (path) { return 'Workspace++: تم تصدير الجلسات إلى ' + path; },
+        exportSessionsFailed: 'Workspace++: فشل تصدير الجلسات.',
+        importSessionsDone: function (path) { return 'Workspace++: تم استيراد الجلسات من ' + path; },
+        importSessionsNoFile: 'Workspace++: لم يتم العثور على ملف تصدير في .workspace-plus-plus/exports.',
+        importSessionsFailed: 'Workspace++: فشل استيراد الجلسات.',
+        settingsSectionAdvanced: 'متقدم',
+        settingsSectionReset: 'إعادة تعيين',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'قائمة الجلسات والبحث',
+        settingsSectionSwitchCommands: 'أوامر التبديل',
+        settingsSectionScrollSwitch: 'التبديل بالتمرير',
+        settingsSubsectionSwitchSaving: 'الحفظ عند تبديل الجلسات',
+        settingsSubsectionAutoSaveMode: 'وضع الحفظ التلقائي للجلسات',
+        settingsSubsectionSwitchCommands: 'أوامر تبديل الجلسات',
+        settingsSubsectionScrollSwitch: 'تبديل الجلسات عبر التمرير',
+        settingsSubsectionSwitchPreview: 'معاينة قبل تبديل الجلسات',
+        settingsStatusBarScrollPreset: 'إعداد مسبق لإدخال التمرير',
+        settingsStatusBarScrollPresetDesc: 'اختر إعدادًا مسبقًا مناسبًا لجهازك، أو انتقل إلى "مخصص" لضبط القيم بنفسك.',
+        settingsStatusBarScrollPresetTrackpad: 'لوحة اللمس',
+        settingsStatusBarScrollPresetNotchedWheel: 'عجلة فأرة مسننة',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'عجلة فأرة حرة الدوران',
+        settingsStatusBarScrollPresetCustom: 'مخصص',
+        settingsStatusBarScrollModifier: 'مفتاح التعديل المطلوب',
+        settingsStatusBarScrollModifierDesc: 'اختر مفتاح التعديل الذي يجب الضغط عليه أثناء التمرير فوق عنصر شريط الحالة.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd أو Option', 'Ctrl أو Alt'),
+        settingsStatusBarScrollModifierNone: 'بدون',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Cmd فقط', 'Ctrl فقط'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Option فقط', 'Alt فقط'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd أو Option', 'Ctrl أو Alt'),
+        settingsStatusBarScrollThreshold: 'عتبة الحساسية',
+        settingsStatusBarScrollThresholdDesc: 'كلما كانت القيمة أقل أصبح التبديل أسهل. يُستخدم فقط عند اختيار الإعداد المسبق "مخصص".',
+        settingsStatusBarScrollCooldown: 'فترة التهدئة',
+        settingsStatusBarScrollCooldownDesc: 'الحد الأدنى للوقت بين عمليتي تبديل جلسات يتم تشغيلهما بالتمرير. يُستخدم فقط عند اختيار الإعداد المسبق "مخصص".',
+        settingsStatusBarScrollResetWindow: 'نافذة إعادة ضبط التراكم',
+        settingsStatusBarScrollResetWindowDesc: 'المدة التي تستمر فيها قيم التمرير الصغيرة في التراكم قبل إعادة الضبط. يُستخدم فقط عند اختيار الإعداد المسبق "مخصص".',
+        settingsStatusBarScrollInvert: 'عكس اتجاه التمرير',
+        settingsStatusBarScrollInvertDesc: 'يعكس اتجاه السابق/التالي عند تبديل الجلسات بالتمرير في شريط الحالة.',
+        settingsUseLocalSettings: 'استخدام إعدادات محلية للمخزن',
+        settingsUseLocalSettingsDesc: 'فعّل هذا إذا كنت تزامن .obsidian بين عدة مخازن (مثل Settings Profiles) وتريد أن تبقى إعدادات Workspace++ مختلفة لكل مخزن.',
+        settingsCopyGlobalToLocal: 'نسخ الإعدادات العامة إلى هذا المخزن',
+        settingsCopyGlobalToLocalDesc: 'استبدال الإعدادات المحلية للمخزن بالإعدادات العامة الحالية.',
+        settingsCopyGlobalToLocalBtn: 'نسخ',
+        settingsResetLocalSettings: 'إعادة تعيين الإعدادات المحلية للمخزن',
+        settingsResetLocalSettingsDesc: 'إعادة الإعدادات المحلية للمخزن إلى الإعدادات العامة.',
+        settingsResetLocalSettingsBtn: 'إعادة تعيين المحلي',
+        settingsAdvancedStorageSubsection: 'سلوك التخزين',
+        settingsAdvancedTransferSubsection: 'نقل البيانات',
+        settingsDeveloperSection: 'أدوات المطور',
+        settingsStorageDiagnostics: 'تشخيص التخزين',
+        settingsStorageDiagnosticsDesc: 'تفاصيل التخزين المستخدمة حالياً بواسطة Workspace++.',
+        settingsStorageFieldSessions: 'ملف الجلسات',
+        settingsStorageFieldSessionsBackup: 'نسخة احتياطية للجلسات',
+        settingsStorageFieldLocalSettings: 'ملف الإعدادات المحلية',
+        settingsStorageFieldGlobalSettings: 'ملف الإعدادات العامة',
+        settingsStorageFieldSessionCount: 'عدد الجلسات',
+        settingsStorageFieldUpdatedAt: 'آخر تحديث',
+        settingsExportSessions: 'تصدير الجلسات',
+        settingsExportSessionsDesc: 'حفظ لقطة في .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'تصدير',
+        settingsImportSessions: 'استيراد الجلسات',
+        settingsImportSessionsDesc: 'استيراد أحدث لقطة من .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'استيراد الأحدث',
+        confirmImportSessions: 'استيراد أحدث جلسات تم تصديرها؟ سيتم استبدال الجلسات الحالية.',
+        settingsResetSettings: 'إعادة تعيين الإعدادات',
+        settingsResetSettingsDesc: 'إعادة إعدادات Workspace++ إلى القيم الافتراضية ضمن نطاق الإعدادات الحالي.',
+        settingsResetSettingsBtn: 'إعادة تعيين الإعدادات',
+        confirmResetSettings: 'إعادة إعدادات Workspace++ إلى القيم الافتراضية؟',
+        resetSettingsDone: 'تمت إعادة تعيين إعدادات Workspace++.',
+        resetSettingsFailed: 'فشلت إعادة تعيين إعدادات Workspace++.',
+        settingsResetSessionsAndSettings: 'إعادة تعيين الجلسات والإعدادات',
+        settingsResetSessionsAndSettingsDesc: 'إعادة تعيين كل من الجلسات المحفوظة وإعدادات Workspace++ معاً.',
+        settingsResetSessionsAndSettingsBtn: 'إعادة تعيين الكل',
+        confirmResetSessionsAndSettings: 'إعادة تعيين الجلسات والإعدادات معاً؟ لا يمكن التراجع عن هذا الإجراء.',
+        resetSessionsAndSettingsDone: 'تمت إعادة تعيين الجلسات والإعدادات.',
+        resetSessionsAndSettingsFailed: 'فشلت إعادة تعيين الجلسات والإعدادات.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'حفظ اسم الملاحظة الحالية كجلسة',
+        noActiveMarkdownFile: 'لا توجد ملاحظة Markdown نشطة.',
+        savedCurrentNoteNameAsSession: function (n) { return 'تم حفظ الملاحظة الحالية كجلسة "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'فشل حفظ اسم الملاحظة الحالية كجلسة.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'استخدم Mod + التمرير للتبديل بين الجلسات',
@@ -241,6 +348,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u0627\u0644\u062c\u0644\u0633\u0629 \u201c' + n + '\u201d \u0646\u0634\u0637\u0629 \u0628\u0627\u0644\u0641\u0639\u0644'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'استعادة الجلسة',
+        settingsRestoreSidebars: 'استعادة الشريطين الجانبيين',
+        settingsRestoreSidebarsDesc: 'عند إيقافه، يؤدي تبديل جلسة أو استعادتها إلى استعادة منطقة التحرير الرئيسية فقط مع الاحتفاظ بالشريطين الجانبيين الأيسر والأيمن الحاليين.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'حذف النسخ الاحتياطية وسجل الإصدارات',
@@ -258,11 +372,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'فشلت إعادة تعيين بيانات Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'استعادة الجلسة',
-        settingsRestoreSidebars: 'استعادة الشريطين الجانبيين',
-        settingsRestoreSidebarsDesc: 'عند إيقافه، يؤدي تبديل جلسة أو استعادتها إلى استعادة منطقة التحرير الرئيسية فقط مع الاحتفاظ بالشريطين الجانبيين الأيسر والأيمن الحاليين.',
-};
-
-export const ar = Object.assign({}, main, reset, restore);
+export const ar = Object.assign({}, extended, note, main, restore, reset);

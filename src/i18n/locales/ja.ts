@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: '現在のノート名でセッションを保存',
+        noActiveMarkdownFile: 'アクティブなMarkdownノートがありません。',
+        savedCurrentNoteNameAsSession: function (n) { return '現在のノートをセッション「' + n + '」として保存しました'; },
+        saveCurrentNoteNameAsSessionFailed: '現在のノート名でセッションを保存できませんでした。',
+};
+
 const main = {
 
         modalTitle: 'セッション管理',
@@ -357,6 +365,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'セッション「' + n + '」は既にアクティブです'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'セッション復元',
+        settingsRestoreSidebars: 'サイドバーも復元',
+        settingsRestoreSidebarsDesc: 'オフにすると、セッションの切り替えや復元では中央の編集エリアだけを復元し、左右のサイドバーは現在の状態を維持します。',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'バックアップとバージョン履歴を削除',
@@ -374,11 +389,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++ のデータのリセットに失敗しました。',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'セッション復元',
-        settingsRestoreSidebars: 'サイドバーも復元',
-        settingsRestoreSidebarsDesc: 'オフにすると、セッションの切り替えや復元では中央の編集エリアだけを復元し、左右のサイドバーは現在の状態を維持します。',
-};
-
-export const ja = Object.assign({}, main, reset, restore);
+export const ja = Object.assign({}, note, main, restore, reset);

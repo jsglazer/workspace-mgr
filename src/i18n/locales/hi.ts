@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'वर्तमान नोट नाम को सत्र के रूप में सहेजें',
+        noActiveMarkdownFile: 'कोई सक्रिय Markdown नोट नहीं है।',
+        savedCurrentNoteNameAsSession: function (n) { return 'वर्तमान नोट "' + n + '" सत्र के रूप में सहेजा गया'; },
+        saveCurrentNoteNameAsSessionFailed: 'वर्तमान नोट नाम को सत्र के रूप में सहेजा नहीं जा सका।',
+};
+
 const main = {
 
         modalTitle: 'सत्र प्रबंधित करें',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'सत्र "' + n + '" पहले से सक्रिय है'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'सत्र पुनर्स्थापना',
+        settingsRestoreSidebars: 'साइडबार भी पुनर्स्थापित करें',
+        settingsRestoreSidebarsDesc: 'बंद होने पर, सत्र बदलने या पुनर्स्थापित करने से केवल मुख्य संपादक क्षेत्र पुनर्स्थापित होता है और मौजूदा बाएँ व दाएँ साइडबार बने रहते हैं।',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'बैकअप और संस्करण इतिहास मिटाएँ',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++ डेटा रीसेट नहीं हो सका।',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'सत्र पुनर्स्थापना',
-        settingsRestoreSidebars: 'साइडबार भी पुनर्स्थापित करें',
-        settingsRestoreSidebarsDesc: 'बंद होने पर, सत्र बदलने या पुनर्स्थापित करने से केवल मुख्य संपादक क्षेत्र पुनर्स्थापित होता है और मौजूदा बाएँ व दाएँ साइडबार बने रहते हैं।',
-};
-
-export const hi = Object.assign({}, main, reset, restore);
+export const hi = Object.assign({}, note, main, restore, reset);

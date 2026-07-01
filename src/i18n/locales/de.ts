@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'Sitzung „' + n + '“ mit aktuellem Layout überschreiben?'; },
+        cmdSaveCurrentLayoutToSession: 'Aktuelles Layout in Sitzung speichern...',
+        savedCurrentLayoutToSession: function (n) { return 'Aktuelles Layout in „' + n + '“ gespeichert'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Zu überschreibende Sitzung auswählen...',
+        contextSaveCurrentLayoutToThisSession: 'Aktuelles Layout in diese Sitzung speichern',
+        cmdExportSessions: 'Sitzungs-Snapshot exportieren',
+        cmdImportSessions: 'Neueste Sitzungs-Snapshot importieren',
+        cmdReloadCurrentWithoutSaving: 'Aktuelle Sitzung neu laden (ohne Speichern)',
+        reloadedSession: function (n) { return 'Sitzung „' + n + '“ neu geladen'; },
+        defaultSessionName: 'Standard',
+        nameSessionTitle: 'Mit Sitzungsname speichern',
+        nameSessionPlaceholder: 'Sitzungsname...',
+        saveWithoutNaming: 'Ohne Namen speichern',
+        sessionDataMigrated: 'Workspace++: Sitzungsdaten wurden nach .workspace-plus-plus/sessions.json verschoben.',
+        sessionDataMigrationFailed: 'Workspace++: Sitzungsdaten konnten nicht migriert werden. Altdaten bleiben erhalten.',
+        localSettingsEnabled: 'Workspace++: Vault-lokale Einstellungen aktiviert.',
+        localSettingsDisabled: 'Workspace++: Vault-lokale Einstellungen deaktiviert.',
+        localSettingsCopied: 'Workspace++: Globale Einstellungen wurden in die Vault-lokalen Einstellungen kopiert.',
+        localSettingsLoadFailed: 'Workspace++: Vault-lokale Einstellungen konnten nicht geladen werden. Globale Einstellungen werden verwendet.',
+        localSettingsOperationFailed: 'Workspace++: Vault-lokale Einstellungen konnten nicht aktualisiert werden.',
+        exportSessionsDone: function (path) { return 'Workspace++: Sitzungen nach ' + path + ' exportiert'; },
+        exportSessionsFailed: 'Workspace++: Sitzungen konnten nicht exportiert werden.',
+        importSessionsDone: function (path) { return 'Workspace++: Sitzungen aus ' + path + ' importiert'; },
+        importSessionsNoFile: 'Workspace++: Keine Exportdatei in .workspace-plus-plus/exports gefunden.',
+        importSessionsFailed: 'Workspace++: Sitzungen konnten nicht importiert werden.',
+        settingsSectionAdvanced: 'Erweitert',
+        settingsSectionReset: 'Zurücksetzen',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Sitzungsliste und Suche',
+        settingsSectionSwitchCommands: 'Wechselbefehle',
+        settingsSectionScrollSwitch: 'Wechsel per Scrollen',
+        settingsSubsectionSwitchSaving: 'Speichern beim Sitzungswechsel',
+        settingsSubsectionAutoSaveMode: 'Automatischer Sitzungs-Speichermodus',
+        settingsSubsectionSwitchCommands: 'Befehle zum Sitzungswechsel',
+        settingsSubsectionScrollSwitch: 'Sitzungswechsel per Scrollen',
+        settingsSubsectionSwitchPreview: 'Vorschau vor dem Sitzungswechsel',
+        settingsStatusBarScrollPreset: 'Voreinstellung für Scroll-Eingabe',
+        settingsStatusBarScrollPresetDesc: 'Wählen Sie eine auf Ihr Gerät abgestimmte Voreinstellung oder wechseln Sie zu Benutzerdefiniert, um die Werte selbst anzupassen.',
+        settingsStatusBarScrollPresetTrackpad: 'Trackpad',
+        settingsStatusBarScrollPresetNotchedWheel: 'Gerastertes Mausrad',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Mausrad mit Freilauf',
+        settingsStatusBarScrollPresetCustom: 'Benutzerdefiniert',
+        settingsStatusBarScrollModifier: 'Erforderliche Zusatztaste',
+        settingsStatusBarScrollModifierDesc: 'Wählen Sie, welche Zusatztaste beim Scrollen über das Element in der Statusleiste gehalten werden muss.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd oder Option', 'Ctrl oder Alt'),
+        settingsStatusBarScrollModifierNone: 'Keine',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Nur Cmd', 'Nur Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Nur Option', 'Nur Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd oder Option', 'Ctrl oder Alt'),
+        settingsStatusBarScrollThreshold: 'Empfindlichkeitsschwelle',
+        settingsStatusBarScrollThresholdDesc: 'Niedrigere Werte schalten leichter um. Wird nur mit der Voreinstellung Benutzerdefiniert verwendet.',
+        settingsStatusBarScrollCooldown: 'Abklingzeit',
+        settingsStatusBarScrollCooldownDesc: 'Mindestabstand zwischen durch Scrollen ausgelösten Sitzungswechseln. Wird nur mit der Voreinstellung Benutzerdefiniert verwendet.',
+        settingsStatusBarScrollResetWindow: 'Rücksetzfenster für Ansammlung',
+        settingsStatusBarScrollResetWindowDesc: 'Wie lange kleine Scroll-Deltas vor dem Zurücksetzen weiter zusammengezählt werden. Wird nur mit der Voreinstellung Benutzerdefiniert verwendet.',
+        settingsStatusBarScrollInvert: 'Scrollrichtung umkehren',
+        settingsStatusBarScrollInvertDesc: 'Kehrt die Richtung Vorherige/Nächste für den Sitzungswechsel per Scrollen in der Statusleiste um.',
+        settingsUseLocalSettings: 'Vault-lokale Einstellungen verwenden',
+        settingsUseLocalSettingsDesc: 'Aktiviere dies, wenn du .obsidian zwischen mehreren Vaults synchronisierst (z. B. mit Settings Profiles) und die Workspace++-Einstellungen pro Vault unterschiedlich halten möchtest.',
+        settingsCopyGlobalToLocal: 'Globale Einstellungen in dieses Vault kopieren',
+        settingsCopyGlobalToLocalDesc: 'Überschreibt die Vault-lokalen Einstellungen mit den aktuellen globalen Einstellungen.',
+        settingsCopyGlobalToLocalBtn: 'Kopieren',
+        settingsResetLocalSettings: 'Vault-lokale Einstellungen zurücksetzen',
+        settingsResetLocalSettingsDesc: 'Setzt Vault-lokale Einstellungen auf die globalen Einstellungen zurück.',
+        settingsResetLocalSettingsBtn: 'Lokal zurücksetzen',
+        settingsAdvancedStorageSubsection: 'Speicherverhalten',
+        settingsAdvancedTransferSubsection: 'Datenübertragung',
+        settingsDeveloperSection: 'Entwicklerwerkzeuge',
+        settingsStorageDiagnostics: 'Speicherdiagnose',
+        settingsStorageDiagnosticsDesc: 'Speicherdetails, die Workspace++ aktuell verwendet.',
+        settingsStorageFieldSessions: 'Sitzungsdatei',
+        settingsStorageFieldSessionsBackup: 'Sitzungssicherung',
+        settingsStorageFieldLocalSettings: 'Datei für lokale Einstellungen',
+        settingsStorageFieldGlobalSettings: 'Datei für globale Einstellungen',
+        settingsStorageFieldSessionCount: 'Anzahl Sitzungen',
+        settingsStorageFieldUpdatedAt: 'Aktualisiert am',
+        settingsExportSessions: 'Sitzungen exportieren',
+        settingsExportSessionsDesc: 'Speichert einen Snapshot in .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Exportieren',
+        settingsImportSessions: 'Sitzungen importieren',
+        settingsImportSessionsDesc: 'Importiert den neuesten Snapshot aus .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Neueste importieren',
+        confirmImportSessions: 'Neueste exportierte Sitzungen importieren? Aktuelle Sitzungen werden ersetzt.',
+        settingsResetSettings: 'Einstellungen zurücksetzen',
+        settingsResetSettingsDesc: 'Setzt Workspace++-Einstellungen im aktuellen Einstellungsbereich auf Standard zurück.',
+        settingsResetSettingsBtn: 'Einstellungen zurücksetzen',
+        confirmResetSettings: 'Workspace++-Einstellungen auf Standard zurücksetzen?',
+        resetSettingsDone: 'Workspace++-Einstellungen wurden zurückgesetzt.',
+        resetSettingsFailed: 'Workspace++-Einstellungen konnten nicht zurückgesetzt werden.',
+        settingsResetSessionsAndSettings: 'Sitzungen und Einstellungen zurücksetzen',
+        settingsResetSessionsAndSettingsDesc: 'Setzt gespeicherte Sitzungen und Workspace++-Einstellungen gleichzeitig zurück.',
+        settingsResetSessionsAndSettingsBtn: 'Beides zurücksetzen',
+        confirmResetSessionsAndSettings: 'Sitzungen und Einstellungen zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.',
+        resetSessionsAndSettingsDone: 'Sitzungen und Einstellungen wurden zurückgesetzt.',
+        resetSessionsAndSettingsFailed: 'Sitzungen und Einstellungen konnten nicht zurückgesetzt werden.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Aktuellen Notiznamen als Sitzung speichern',
+        noActiveMarkdownFile: 'Keine aktive Markdown-Notiz.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Aktuelle Notiz als Sitzung „' + n + '“ gespeichert'; },
+        saveCurrentNoteNameAsSessionFailed: 'Aktueller Notizname konnte nicht als Sitzung gespeichert werden.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mit Mod + Scroll zwischen Sitzungen wechseln',
@@ -241,6 +348,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Sitzung \u201e' + n + '\u201c ist bereits aktiv'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Sitzungswiederherstellung',
+        settingsRestoreSidebars: 'Seitenleisten wiederherstellen',
+        settingsRestoreSidebarsDesc: 'Wenn deaktiviert, wird beim Wechseln oder Wiederherstellen einer Sitzung nur der Haupteditorbereich wiederhergestellt, während die aktuellen linken und rechten Seitenleisten erhalten bleiben.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Sicherungen und Versionsverlauf löschen',
@@ -258,11 +372,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++-Daten konnten nicht zurückgesetzt werden.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Sitzungswiederherstellung',
-        settingsRestoreSidebars: 'Seitenleisten wiederherstellen',
-        settingsRestoreSidebarsDesc: 'Wenn deaktiviert, wird beim Wechseln oder Wiederherstellen einer Sitzung nur der Haupteditorbereich wiederhergestellt, während die aktuellen linken und rechten Seitenleisten erhalten bleiben.',
-};
-
-export const de = Object.assign({}, main, reset, restore);
+export const de = Object.assign({}, extended, note, main, restore, reset);

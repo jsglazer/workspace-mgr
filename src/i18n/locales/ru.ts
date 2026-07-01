@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'Перезаписать «' + n + '» текущим макетом?'; },
+        cmdSaveCurrentLayoutToSession: 'Сохранить текущий макет в сессию...',
+        savedCurrentLayoutToSession: function (n) { return 'Текущий макет сохранён в «' + n + '»'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Выберите сессию для перезаписи...',
+        contextSaveCurrentLayoutToThisSession: 'Сохранить текущий макет в эту сессию',
+        cmdExportSessions: 'Экспортировать снимок сессий',
+        cmdImportSessions: 'Импортировать последний снимок сессий',
+        cmdReloadCurrentWithoutSaving: 'Перезагрузить текущую сессию (без сохранения)',
+        reloadedSession: function (n) { return 'Сессия «' + n + '» перезагружена'; },
+        defaultSessionName: 'по умолчанию',
+        nameSessionTitle: 'Сохранить с именем сессии',
+        nameSessionPlaceholder: 'Название сессии...',
+        saveWithoutNaming: 'Сохранить без имени',
+        sessionDataMigrated: 'Workspace++: данные сессий перенесены в .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++: не удалось перенести данные сессий. Устаревшие данные сохранены.',
+        localSettingsEnabled: 'Workspace++: локальные настройки хранилища включены.',
+        localSettingsDisabled: 'Workspace++: локальные настройки хранилища отключены.',
+        localSettingsCopied: 'Workspace++: глобальные настройки скопированы в локальные настройки хранилища.',
+        localSettingsLoadFailed: 'Workspace++: не удалось загрузить локальные настройки хранилища. Будут использованы глобальные настройки.',
+        localSettingsOperationFailed: 'Workspace++: не удалось обновить локальные настройки хранилища.',
+        exportSessionsDone: function (path) { return 'Workspace++: сессии экспортированы в ' + path; },
+        exportSessionsFailed: 'Workspace++: не удалось экспортировать сессии.',
+        importSessionsDone: function (path) { return 'Workspace++: сессии импортированы из ' + path; },
+        importSessionsNoFile: 'Workspace++: в .workspace-plus-plus/exports не найден файл экспорта.',
+        importSessionsFailed: 'Workspace++: не удалось импортировать сессии.',
+        settingsSectionAdvanced: 'Дополнительно',
+        settingsSectionReset: 'Сброс',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Список сессий и поиск',
+        settingsSectionSwitchCommands: 'Команды переключения',
+        settingsSectionScrollSwitch: 'Переключение прокруткой',
+        settingsSubsectionSwitchSaving: 'Сохранение при переключении сессий',
+        settingsSubsectionAutoSaveMode: 'Режим автосохранения сессий',
+        settingsSubsectionSwitchCommands: 'Команды переключения сессий',
+        settingsSubsectionScrollSwitch: 'Переключение сессий прокруткой',
+        settingsSubsectionSwitchPreview: 'Предпросмотр перед переключением сессий',
+        settingsStatusBarScrollPreset: 'Профиль ввода прокрутки',
+        settingsStatusBarScrollPresetDesc: 'Выберите профиль, подходящий для вашего устройства, или переключитесь на «Свой» и настройте значения вручную.',
+        settingsStatusBarScrollPresetTrackpad: 'Трекпад',
+        settingsStatusBarScrollPresetNotchedWheel: 'Колесо мыши с отсечками',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Колесо мыши со свободной прокруткой',
+        settingsStatusBarScrollPresetCustom: 'Свой',
+        settingsStatusBarScrollModifier: 'Обязательный модификатор',
+        settingsStatusBarScrollModifierDesc: 'Выберите модификатор, который нужно удерживать при прокрутке по элементу строки состояния.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd или Option', 'Ctrl или Alt'),
+        settingsStatusBarScrollModifierNone: 'Нет',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Только Cmd', 'Только Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Только Option', 'Только Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd или Option', 'Ctrl или Alt'),
+        settingsStatusBarScrollThreshold: 'Порог чувствительности',
+        settingsStatusBarScrollThresholdDesc: 'Чем меньше значение, тем легче срабатывает переключение. Используется только с профилем «Свой».',
+        settingsStatusBarScrollCooldown: 'Задержка',
+        settingsStatusBarScrollCooldownDesc: 'Минимальный интервал между переключениями сессий, вызванными прокруткой. Используется только с профилем «Свой».',
+        settingsStatusBarScrollResetWindow: 'Окно сброса накопления',
+        settingsStatusBarScrollResetWindowDesc: 'Как долго суммировать небольшие шаги прокрутки перед сбросом. Используется только с профилем «Свой».',
+        settingsStatusBarScrollInvert: 'Инвертировать направление прокрутки',
+        settingsStatusBarScrollInvertDesc: 'Меняет местами направления «предыдущая/следующая» для переключения сессий прокруткой по строке состояния.',
+        settingsUseLocalSettings: 'Использовать локальные настройки хранилища',
+        settingsUseLocalSettingsDesc: 'Включите, если вы синхронизируете .obsidian между несколькими хранилищами (например, через Settings Profiles) и хотите разные настройки Workspace++ для каждого хранилища.',
+        settingsCopyGlobalToLocal: 'Копировать глобальные настройки в это хранилище',
+        settingsCopyGlobalToLocalDesc: 'Перезаписывает локальные настройки хранилища текущими глобальными настройками.',
+        settingsCopyGlobalToLocalBtn: 'Копировать',
+        settingsResetLocalSettings: 'Сбросить локальные настройки хранилища',
+        settingsResetLocalSettingsDesc: 'Сбрасывает локальные настройки хранилища до глобальных настроек.',
+        settingsResetLocalSettingsBtn: 'Сбросить локальные',
+        settingsAdvancedStorageSubsection: 'Поведение хранения',
+        settingsAdvancedTransferSubsection: 'Передача данных',
+        settingsDeveloperSection: 'Инструменты разработчика',
+        settingsStorageDiagnostics: 'Диагностика хранения',
+        settingsStorageDiagnosticsDesc: 'Параметры хранения, которые сейчас использует Workspace++.',
+        settingsStorageFieldSessions: 'Файл сессий',
+        settingsStorageFieldSessionsBackup: 'Резервная копия сессий',
+        settingsStorageFieldLocalSettings: 'Файл локальных настроек',
+        settingsStorageFieldGlobalSettings: 'Файл глобальных настроек',
+        settingsStorageFieldSessionCount: 'Количество сессий',
+        settingsStorageFieldUpdatedAt: 'Обновлено',
+        settingsExportSessions: 'Экспортировать сессии',
+        settingsExportSessionsDesc: 'Сохранить снимок в .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Экспорт',
+        settingsImportSessions: 'Импортировать сессии',
+        settingsImportSessionsDesc: 'Импортировать последний снимок из .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Импортировать последний',
+        confirmImportSessions: 'Импортировать последний экспортированный снимок сессий? Текущие сессии будут заменены.',
+        settingsResetSettings: 'Сбросить настройки',
+        settingsResetSettingsDesc: 'Сбрасывает настройки Workspace++ до значений по умолчанию в текущей области настроек.',
+        settingsResetSettingsBtn: 'Сбросить настройки',
+        confirmResetSettings: 'Сбросить настройки Workspace++ до значений по умолчанию?',
+        resetSettingsDone: 'Настройки Workspace++ сброшены.',
+        resetSettingsFailed: 'Не удалось сбросить настройки Workspace++.',
+        settingsResetSessionsAndSettings: 'Сбросить сессии и настройки',
+        settingsResetSessionsAndSettingsDesc: 'Одновременно сбрасывает сохраненные сессии и настройки Workspace++.',
+        settingsResetSessionsAndSettingsBtn: 'Сбросить оба',
+        confirmResetSessionsAndSettings: 'Сбросить сессии и настройки? Это действие нельзя отменить.',
+        resetSessionsAndSettingsDone: 'Сессии и настройки сброшены.',
+        resetSessionsAndSettingsFailed: 'Не удалось сбросить сессии и настройки.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Сохранить имя текущей заметки как сессию',
+        noActiveMarkdownFile: 'Нет активной Markdown-заметки.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Текущая заметка сохранена как сессия «' + n + '»'; },
+        saveCurrentNoteNameAsSessionFailed: 'Не удалось сохранить имя текущей заметки как сессию.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + прокрутка для переключения сессий',
@@ -241,6 +348,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u0421\u0435\u0430\u043d\u0441 \u00ab' + n + '\u00bb \u0443\u0436\u0435 \u0430\u043a\u0442\u0438\u0432\u0435\u043d'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Восстановление сессий',
+        settingsRestoreSidebars: 'Восстанавливать боковые панели',
+        settingsRestoreSidebarsDesc: 'Если выключено, при переключении или восстановлении сессии восстанавливается только основная область редактора, а текущие левая и правая боковые панели сохраняются.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Удалить резервные копии и историю версий',
@@ -258,11 +372,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Не удалось сбросить данные Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Восстановление сессий',
-        settingsRestoreSidebars: 'Восстанавливать боковые панели',
-        settingsRestoreSidebarsDesc: 'Если выключено, при переключении или восстановлении сессии восстанавливается только основная область редактора, а текущие левая и правая боковые панели сохраняются.',
-};
-
-export const ru = Object.assign({}, main, reset, restore);
+export const ru = Object.assign({}, extended, note, main, restore, reset);

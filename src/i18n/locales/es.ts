@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return '¿Sobrescribir «' + n + '» con el diseño actual?'; },
+        cmdSaveCurrentLayoutToSession: 'Guardar diseño actual en una sesión...',
+        savedCurrentLayoutToSession: function (n) { return 'Diseño actual guardado en «' + n + '»'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Selecciona una sesión para sobrescribir...',
+        contextSaveCurrentLayoutToThisSession: 'Guardar diseño actual en esta sesión',
+        cmdExportSessions: 'Exportar instantánea de sesiones',
+        cmdImportSessions: 'Importar la instantánea más reciente de sesiones',
+        cmdReloadCurrentWithoutSaving: 'Recargar sesión actual (sin guardar)',
+        reloadedSession: function (n) { return 'Sesión «' + n + '» recargada'; },
+        defaultSessionName: 'predeterminada',
+        nameSessionTitle: 'Guardar con nombre de sesión',
+        nameSessionPlaceholder: 'Nombre de la sesión...',
+        saveWithoutNaming: 'Guardar sin nombrar',
+        sessionDataMigrated: 'Workspace++: Los datos de sesión se movieron a .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++: No se pudieron migrar los datos de sesión. Los datos heredados se conservan.',
+        localSettingsEnabled: 'Workspace++: Configuración local del vault activada.',
+        localSettingsDisabled: 'Workspace++: Configuración local del vault desactivada.',
+        localSettingsCopied: 'Workspace++: Se copiaron los ajustes globales a los ajustes locales del vault.',
+        localSettingsLoadFailed: 'Workspace++: No se pudieron cargar los ajustes locales del vault. Se usarán los ajustes globales.',
+        localSettingsOperationFailed: 'Workspace++: No se pudieron actualizar los ajustes locales del vault.',
+        exportSessionsDone: function (path) { return 'Workspace++: Sesiones exportadas a ' + path; },
+        exportSessionsFailed: 'Workspace++: Error al exportar sesiones.',
+        importSessionsDone: function (path) { return 'Workspace++: Sesiones importadas desde ' + path; },
+        importSessionsNoFile: 'Workspace++: No se encontró ningún archivo exportado en .workspace-plus-plus/exports.',
+        importSessionsFailed: 'Workspace++: Error al importar sesiones.',
+        settingsSectionAdvanced: 'Avanzado',
+        settingsSectionReset: 'Restablecer',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Lista y búsqueda de sesiones',
+        settingsSectionSwitchCommands: 'Comandos de cambio',
+        settingsSectionScrollSwitch: 'Cambio con desplazamiento',
+        settingsSubsectionSwitchSaving: 'Guardado al cambiar de sesión',
+        settingsSubsectionAutoSaveMode: 'Modo de guardado automático de sesiones',
+        settingsSubsectionSwitchCommands: 'Comandos de cambio de sesión',
+        settingsSubsectionScrollSwitch: 'Cambio de sesión con desplazamiento',
+        settingsSubsectionSwitchPreview: 'Vista previa antes de cambiar de sesión',
+        settingsStatusBarScrollPreset: 'Preajuste de desplazamiento',
+        settingsStatusBarScrollPresetDesc: 'Elige un preajuste adaptado a tu dispositivo o cambia a Personalizado para ajustar los valores manualmente.',
+        settingsStatusBarScrollPresetTrackpad: 'Panel táctil',
+        settingsStatusBarScrollPresetNotchedWheel: 'Rueda dentada del ratón',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Rueda libre del ratón',
+        settingsStatusBarScrollPresetCustom: 'Personalizado',
+        settingsStatusBarScrollModifier: 'Modificador requerido',
+        settingsStatusBarScrollModifierDesc: 'Elige qué modificador debe mantenerse pulsado al desplazarte sobre el elemento de la barra de estado.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd u Opción', 'Ctrl o Alt'),
+        settingsStatusBarScrollModifierNone: 'Ninguno',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Solo Cmd', 'Solo Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Solo Opción', 'Solo Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd u Opción', 'Ctrl o Alt'),
+        settingsStatusBarScrollThreshold: 'Umbral de sensibilidad',
+        settingsStatusBarScrollThresholdDesc: 'Cuanto menor sea el valor, más fácil será cambiar. Solo se usa con el preajuste Personalizado.',
+        settingsStatusBarScrollCooldown: 'Tiempo de espera',
+        settingsStatusBarScrollCooldownDesc: 'Tiempo mínimo entre cambios de sesión activados por desplazamiento. Solo se usa con el preajuste Personalizado.',
+        settingsStatusBarScrollResetWindow: 'Ventana de reinicio de acumulación',
+        settingsStatusBarScrollResetWindowDesc: 'Cuánto tiempo se siguen combinando pequeños desplazamientos antes de reiniciarlos. Solo se usa con el preajuste Personalizado.',
+        settingsStatusBarScrollInvert: 'Invertir dirección de desplazamiento',
+        settingsStatusBarScrollInvertDesc: 'Invierte la dirección anterior/siguiente al cambiar sesiones con el desplazamiento en la barra de estado.',
+        settingsUseLocalSettings: 'Usar configuración local del vault',
+        settingsUseLocalSettingsDesc: 'Activa esto si sincronizas .obsidian entre varios vaults (por ejemplo, con Settings Profiles) y quieres que la configuración de Workspace++ sea diferente por vault.',
+        settingsCopyGlobalToLocal: 'Copiar ajustes globales a este vault',
+        settingsCopyGlobalToLocalDesc: 'Sobrescribe los ajustes locales del vault con los ajustes globales actuales.',
+        settingsCopyGlobalToLocalBtn: 'Copiar',
+        settingsResetLocalSettings: 'Restablecer ajustes locales del vault',
+        settingsResetLocalSettingsDesc: 'Restablece los ajustes locales del vault a los ajustes globales.',
+        settingsResetLocalSettingsBtn: 'Restablecer local',
+        settingsAdvancedStorageSubsection: 'Comportamiento de almacenamiento',
+        settingsAdvancedTransferSubsection: 'Transferencia de datos',
+        settingsDeveloperSection: 'Herramientas para desarrolladores',
+        settingsStorageDiagnostics: 'Diagnóstico de almacenamiento',
+        settingsStorageDiagnosticsDesc: 'Detalles de almacenamiento usados actualmente por Workspace++.',
+        settingsStorageFieldSessions: 'Archivo de sesiones',
+        settingsStorageFieldSessionsBackup: 'Respaldo de sesiones',
+        settingsStorageFieldLocalSettings: 'Archivo de ajustes locales',
+        settingsStorageFieldGlobalSettings: 'Archivo de ajustes globales',
+        settingsStorageFieldSessionCount: 'Cantidad de sesiones',
+        settingsStorageFieldUpdatedAt: 'Actualizado el',
+        settingsExportSessions: 'Exportar sesiones',
+        settingsExportSessionsDesc: 'Guardar una instantánea en .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Exportar',
+        settingsImportSessions: 'Importar sesiones',
+        settingsImportSessionsDesc: 'Importar la instantánea más reciente desde .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Importar última',
+        confirmImportSessions: '¿Importar las sesiones exportadas más recientes? Las sesiones actuales se reemplazarán.',
+        settingsResetSettings: 'Restablecer ajustes',
+        settingsResetSettingsDesc: 'Restablece los ajustes de Workspace++ al valor predeterminado dentro del alcance de configuración actual.',
+        settingsResetSettingsBtn: 'Restablecer ajustes',
+        confirmResetSettings: '¿Restablecer los ajustes de Workspace++ a los valores predeterminados?',
+        resetSettingsDone: 'Se restablecieron los ajustes de Workspace++.',
+        resetSettingsFailed: 'No se pudieron restablecer los ajustes de Workspace++.',
+        settingsResetSessionsAndSettings: 'Restablecer sesiones y ajustes',
+        settingsResetSessionsAndSettingsDesc: 'Restablece a la vez las sesiones guardadas y los ajustes de Workspace++.',
+        settingsResetSessionsAndSettingsBtn: 'Restablecer ambos',
+        confirmResetSessionsAndSettings: '¿Restablecer sesiones y ajustes? Esta acción no se puede deshacer.',
+        resetSessionsAndSettingsDone: 'Se restablecieron las sesiones y los ajustes.',
+        resetSessionsAndSettingsFailed: 'No se pudieron restablecer las sesiones y los ajustes.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Guardar nombre de nota actual como sesión',
+        noActiveMarkdownFile: 'No hay una nota Markdown activa.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Nota actual guardada como sesión «' + n + '»'; },
+        saveCurrentNoteNameAsSessionFailed: 'No se pudo guardar el nombre de la nota actual como sesión.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + rueda para cambiar de sesión',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'La sesi\u00f3n \u00ab' + n + '\u00bb ya est\u00e1 activa'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Restauración de sesiones',
+        settingsRestoreSidebars: 'Restaurar barras laterales',
+        settingsRestoreSidebarsDesc: 'Si está desactivado, al cambiar o restaurar una sesión solo se restaura el área principal del editor y se conservan las barras laterales izquierda y derecha actuales.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Eliminar copias e historial de versiones',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'No se pudieron restablecer los datos de Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Restauración de sesiones',
-        settingsRestoreSidebars: 'Restaurar barras laterales',
-        settingsRestoreSidebarsDesc: 'Si está desactivado, al cambiar o restaurar una sesión solo se restaura el área principal del editor y se conservan las barras laterales izquierda y derecha actuales.',
-};
-
-export const es = Object.assign({}, main, reset, restore);
+export const es = Object.assign({}, extended, note, main, restore, reset);

@@ -6,6 +6,22 @@
 export type LocaleFn = (...args: (string | number | undefined)[]) => string;
 
 export interface Strings {
+    settingsResetBackupsAndHistory: string;
+    settingsResetBackupsAndHistoryDesc: string;
+    settingsResetBackupsAndHistoryBtn: string;
+    confirmResetBackupsAndHistory: string;
+    resetBackupsAndHistoryHint: string;
+    resetBackupsAndHistoryDone: string;
+    resetBackupsAndHistoryFailed: string;
+    settingsResetSessionsAndSettings: string;
+    settingsResetSessionsAndSettingsDesc: string;
+    settingsResetSessionsAndSettingsBtn: string;
+    confirmResetSessionsAndSettings: string;
+    resetSessionsAndSettingsDone: string;
+    resetSessionsAndSettingsFailed: string;
+    settingsSubsectionSessionRestore: string;
+    settingsRestoreSidebars: string;
+    settingsRestoreSidebarsDesc: string;
     modalTitle: string;
     savePlaceholder: string;
     filterPlaceholder: string;
@@ -239,12 +255,6 @@ export interface Strings {
     resetSessionsHint: string;
     resetSessionsDone: string;
     resetSessionsFailed: string;
-    settingsResetSessionsAndSettings: string;
-    settingsResetSessionsAndSettingsDesc: string;
-    settingsResetSessionsAndSettingsBtn: string;
-    confirmResetSessionsAndSettings: string;
-    resetSessionsAndSettingsDone: string;
-    resetSessionsAndSettingsFailed: string;
     confirmDeleteSettingsHint: string;
     '': string;
     groupCreated: LocaleFn;
@@ -331,14 +341,8 @@ export interface Strings {
     rotationBackupGeneration: LocaleFn;
     frontmatterSessionNotFound: LocaleFn;
     frontmatterAlreadyActive: LocaleFn;
-    settingsResetBackupsAndHistory: string;
-    settingsResetBackupsAndHistoryDesc: string;
-    settingsResetBackupsAndHistoryBtn: string;
-    confirmResetBackupsAndHistory: string;
-    resetBackupsAndHistoryHint: string;
-    resetBackupsAndHistoryDone: string;
-    resetBackupsAndHistoryFailed: string;
-    settingsSubsectionSessionRestore: string;
-    settingsRestoreSidebars: string;
-    settingsRestoreSidebarsDesc: string;
+    cmdSaveCurrentNoteNameAsSession: string;
+    noActiveMarkdownFile: string;
+    savedCurrentNoteNameAsSession: LocaleFn;
+    saveCurrentNoteNameAsSessionFailed: string;
 }

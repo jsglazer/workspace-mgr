@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Zapisz nazwę bieżącej notatki jako sesję',
+        noActiveMarkdownFile: 'Brak aktywnej notatki Markdown.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Zapisano bieżącą notatkę jako sesję "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Nie udało się zapisać nazwy bieżącej notatki jako sesji.',
+};
+
 const main = {
 
         modalTitle: 'Zarządzaj sesjami',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Sesja "' + n + '" jest już aktywna'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Przywracanie sesji',
+        settingsRestoreSidebars: 'Przywracaj paski boczne',
+        settingsRestoreSidebarsDesc: 'Gdy wyłączone, przełączanie lub przywracanie sesji odtwarza tylko główny obszar edytora i zachowuje bieżące lewe oraz prawe paski boczne.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Usuń kopie zapasowe i historię wersji',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Nie udało się zresetować danych Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Przywracanie sesji',
-        settingsRestoreSidebars: 'Przywracaj paski boczne',
-        settingsRestoreSidebarsDesc: 'Gdy wyłączone, przełączanie lub przywracanie sesji odtwarza tylko główny obszar edytora i zachowuje bieżące lewe oraz prawe paski boczne.',
-};
-
-export const pl = Object.assign({}, main, reset, restore);
+export const pl = Object.assign({}, note, main, restore, reset);

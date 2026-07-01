@@ -5,6 +5,14 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Simpan nama nota semasa sebagai sesi',
+        noActiveMarkdownFile: 'Tiada nota Markdown aktif.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Nota semasa disimpan sebagai sesi "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Gagal menyimpan nama nota semasa sebagai sesi.',
+};
+
 const main = {
 
         modalTitle: 'Urus sesi',
@@ -334,6 +342,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Sesi "' + n + '" sudah aktif'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Pemulihan sesi',
+        settingsRestoreSidebars: 'Pulihkan bar sisi',
+        settingsRestoreSidebarsDesc: 'Apabila dimatikan, menukar atau memulihkan sesi hanya memulihkan kawasan editor utama dan mengekalkan bar sisi kiri dan kanan semasa.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Padam sandaran dan sejarah versi',
@@ -351,11 +366,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Gagal menetapkan semula data Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Pemulihan sesi',
-        settingsRestoreSidebars: 'Pulihkan bar sisi',
-        settingsRestoreSidebarsDesc: 'Apabila dimatikan, menukar atau memulihkan sesi hanya memulihkan kawasan editor utama dan mengekalkan bar sisi kiri dan kanan semasa.',
-};
-
-export const ms = Object.assign({}, main, reset, restore);
+export const ms = Object.assign({}, note, main, restore, reset);

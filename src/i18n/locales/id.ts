@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return 'Timpa "' + n + '" dengan tata letak saat ini?'; },
+        cmdSaveCurrentLayoutToSession: 'Simpan tata letak saat ini ke sesi...',
+        savedCurrentLayoutToSession: function (n) { return 'Tata letak saat ini disimpan ke "' + n + '"'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Pilih sesi untuk ditimpa...',
+        contextSaveCurrentLayoutToThisSession: 'Simpan tata letak saat ini ke sesi ini',
+        cmdExportSessions: 'Ekspor snapshot sesi',
+        cmdImportSessions: 'Impor snapshot sesi terbaru',
+        cmdReloadCurrentWithoutSaving: 'Muat ulang sesi saat ini (tanpa menyimpan)',
+        reloadedSession: function (n) { return 'Sesi “' + n + '” dimuat ulang'; },
+        defaultSessionName: 'bawaan',
+        nameSessionTitle: 'Simpan dengan nama sesi',
+        nameSessionPlaceholder: 'Nama sesi...',
+        saveWithoutNaming: 'Simpan tanpa nama',
+        sessionDataMigrated: 'Workspace++: Data sesi dipindahkan ke .workspace-plus-plus/sessions.json.',
+        sessionDataMigrationFailed: 'Workspace++: Gagal memigrasikan data sesi. Data lama tetap disimpan.',
+        localSettingsEnabled: 'Workspace++: Pengaturan lokal vault diaktifkan.',
+        localSettingsDisabled: 'Workspace++: Pengaturan lokal vault dinonaktifkan.',
+        localSettingsCopied: 'Workspace++: Pengaturan global disalin ke pengaturan lokal vault.',
+        localSettingsLoadFailed: 'Workspace++: Gagal memuat pengaturan lokal vault. Pengaturan global akan digunakan.',
+        localSettingsOperationFailed: 'Workspace++: Gagal memperbarui pengaturan lokal vault.',
+        exportSessionsDone: function (path) { return 'Workspace++: Sesi diekspor ke ' + path; },
+        exportSessionsFailed: 'Workspace++: Gagal mengekspor sesi.',
+        importSessionsDone: function (path) { return 'Workspace++: Sesi diimpor dari ' + path; },
+        importSessionsNoFile: 'Workspace++: Tidak ada file ekspor di .workspace-plus-plus/exports.',
+        importSessionsFailed: 'Workspace++: Gagal mengimpor sesi.',
+        settingsSectionAdvanced: 'Lanjutan',
+        settingsSectionReset: 'Setel ulang',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Daftar dan pencarian sesi',
+        settingsSectionSwitchCommands: 'Perintah perpindahan',
+        settingsSectionScrollSwitch: 'Perpindahan dengan gulir',
+        settingsSubsectionSwitchSaving: 'Simpan saat berpindah sesi',
+        settingsSubsectionAutoSaveMode: 'Mode simpan otomatis sesi',
+        settingsSubsectionSwitchCommands: 'Perintah perpindahan sesi',
+        settingsSubsectionScrollSwitch: 'Ganti sesi dengan gulir',
+        settingsSubsectionSwitchPreview: 'Pratinjau sebelum berpindah sesi',
+        settingsStatusBarScrollPreset: 'Preset input gulir',
+        settingsStatusBarScrollPresetDesc: 'Pilih preset yang cocok untuk perangkat Anda, atau beralih ke Kustom untuk menyesuaikan nilainya sendiri.',
+        settingsStatusBarScrollPresetTrackpad: 'Trackpad',
+        settingsStatusBarScrollPresetNotchedWheel: 'Roda mouse bertakik',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Roda mouse putar bebas',
+        settingsStatusBarScrollPresetCustom: 'Kustom',
+        settingsStatusBarScrollModifier: 'Modifier yang diperlukan',
+        settingsStatusBarScrollModifierDesc: 'Pilih modifier yang harus ditekan saat menggulir pada item bilah status.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd atau Option', 'Ctrl atau Alt'),
+        settingsStatusBarScrollModifierNone: 'Tidak ada',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Hanya Cmd', 'Hanya Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Hanya Option', 'Hanya Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd atau Option', 'Ctrl atau Alt'),
+        settingsStatusBarScrollThreshold: 'Ambang sensitivitas',
+        settingsStatusBarScrollThresholdDesc: 'Semakin kecil nilainya, semakin mudah pergantian terjadi. Hanya digunakan saat preset Kustom dipilih.',
+        settingsStatusBarScrollCooldown: 'Jeda',
+        settingsStatusBarScrollCooldownDesc: 'Waktu minimum antarpergantian sesi yang dipicu oleh gulir. Hanya digunakan saat preset Kustom dipilih.',
+        settingsStatusBarScrollResetWindow: 'Jendela reset akumulasi',
+        settingsStatusBarScrollResetWindowDesc: 'Berapa lama delta gulir kecil tetap digabungkan sebelum direset. Hanya digunakan saat preset Kustom dipilih.',
+        settingsStatusBarScrollInvert: 'Balik arah gulir',
+        settingsStatusBarScrollInvertDesc: 'Membalik arah sebelumnya/berikutnya untuk pergantian sesi lewat gulir pada bilah status.',
+        settingsUseLocalSettings: 'Gunakan pengaturan lokal vault',
+        settingsUseLocalSettingsDesc: 'Aktifkan ini jika Anda menyinkronkan .obsidian di beberapa vault (misalnya dengan Settings Profiles) dan ingin pengaturan Workspace++ tetap berbeda per vault.',
+        settingsCopyGlobalToLocal: 'Salin pengaturan global ke vault ini',
+        settingsCopyGlobalToLocalDesc: 'Timpa pengaturan lokal vault dengan pengaturan global saat ini.',
+        settingsCopyGlobalToLocalBtn: 'Salin',
+        settingsResetLocalSettings: 'Setel ulang pengaturan lokal vault',
+        settingsResetLocalSettingsDesc: 'Kembalikan pengaturan lokal vault ke pengaturan global.',
+        settingsResetLocalSettingsBtn: 'Setel ulang lokal',
+        settingsAdvancedStorageSubsection: 'Perilaku penyimpanan',
+        settingsAdvancedTransferSubsection: 'Transfer data',
+        settingsDeveloperSection: 'Alat pengembang',
+        settingsStorageDiagnostics: 'Diagnostik penyimpanan',
+        settingsStorageDiagnosticsDesc: 'Detail penyimpanan yang saat ini dipakai oleh Workspace++.',
+        settingsStorageFieldSessions: 'Berkas sesi',
+        settingsStorageFieldSessionsBackup: 'Cadangan sesi',
+        settingsStorageFieldLocalSettings: 'Berkas pengaturan lokal',
+        settingsStorageFieldGlobalSettings: 'Berkas pengaturan global',
+        settingsStorageFieldSessionCount: 'Jumlah sesi',
+        settingsStorageFieldUpdatedAt: 'Diperbarui pada',
+        settingsExportSessions: 'Ekspor sesi',
+        settingsExportSessionsDesc: 'Simpan snapshot ke .workspace-plus-plus/exports.',
+        settingsExportSessionsBtn: 'Ekspor',
+        settingsImportSessions: 'Impor sesi',
+        settingsImportSessionsDesc: 'Impor snapshot terbaru dari .workspace-plus-plus/exports.',
+        settingsImportSessionsBtn: 'Impor terbaru',
+        confirmImportSessions: 'Impor sesi hasil ekspor terbaru? Sesi saat ini akan diganti.',
+        settingsResetSettings: 'Setel ulang pengaturan',
+        settingsResetSettingsDesc: 'Mengembalikan pengaturan Workspace++ ke nilai bawaan pada cakupan pengaturan saat ini.',
+        settingsResetSettingsBtn: 'Setel ulang pengaturan',
+        confirmResetSettings: 'Setel ulang pengaturan Workspace++ ke bawaan?',
+        resetSettingsDone: 'Pengaturan Workspace++ telah disetel ulang.',
+        resetSettingsFailed: 'Gagal menyetel ulang pengaturan Workspace++.',
+        settingsResetSessionsAndSettings: 'Setel ulang sesi dan pengaturan',
+        settingsResetSessionsAndSettingsDesc: 'Setel ulang sesi tersimpan dan pengaturan Workspace++ sekaligus.',
+        settingsResetSessionsAndSettingsBtn: 'Setel ulang keduanya',
+        confirmResetSessionsAndSettings: 'Setel ulang sesi dan pengaturan? Tindakan ini tidak dapat dibatalkan.',
+        resetSessionsAndSettingsDone: 'Sesi dan pengaturan telah disetel ulang.',
+        resetSessionsAndSettingsFailed: 'Gagal menyetel ulang sesi dan pengaturan.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Simpan nama catatan saat ini sebagai sesi',
+        noActiveMarkdownFile: 'Tidak ada catatan Markdown aktif.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Catatan saat ini disimpan sebagai sesi "' + n + '"'; },
+        saveCurrentNoteNameAsSessionFailed: 'Gagal menyimpan nama catatan saat ini sebagai sesi.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + gulir untuk berpindah sesi',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return 'Sesi \u201c' + n + '\u201d sudah aktif'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Pemulihan sesi',
+        settingsRestoreSidebars: 'Pulihkan bilah sisi',
+        settingsRestoreSidebarsDesc: 'Jika nonaktif, berpindah atau memulihkan sesi hanya memulihkan area editor utama dan mempertahankan bilah sisi kiri dan kanan saat ini.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Hapus cadangan dan riwayat versi',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Gagal menyetel ulang data Workspace++.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Pemulihan sesi',
-        settingsRestoreSidebars: 'Pulihkan bilah sisi',
-        settingsRestoreSidebarsDesc: 'Jika nonaktif, berpindah atau memulihkan sesi hanya memulihkan area editor utama dan mempertahankan bilah sisi kiri dan kanan saat ini.',
-};
-
-export const id = Object.assign({}, main, reset, restore);
+export const id = Object.assign({}, extended, note, main, restore, reset);

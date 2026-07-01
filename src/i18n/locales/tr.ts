@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return '"' + n + '" geçerli düzenle üzerine yazılsın mı?'; },
+        cmdSaveCurrentLayoutToSession: 'Geçerli düzeni oturuma kaydet...',
+        savedCurrentLayoutToSession: function (n) { return 'Geçerli düzen "' + n + '" oturumuna kaydedildi'; },
+        saveCurrentLayoutToSessionPlaceholder: 'Üzerine yazılacak oturumu seç...',
+        contextSaveCurrentLayoutToThisSession: 'Geçerli düzeni bu oturuma kaydet',
+        cmdExportSessions: 'Oturum anlık görüntüsünü dışa aktar',
+        cmdImportSessions: 'En son oturum anlık görüntüsünü içe aktar',
+        cmdReloadCurrentWithoutSaving: 'Geçerli oturumu yeniden yükle (kaydetmeden)',
+        reloadedSession: function (n) { return '“' + n + '” oturumu yeniden yüklendi'; },
+        defaultSessionName: 'varsayılan',
+        nameSessionTitle: 'Oturum adıyla kaydet',
+        nameSessionPlaceholder: 'Oturum adı...',
+        saveWithoutNaming: 'Adlandırmadan kaydet',
+        sessionDataMigrated: 'Workspace++: Oturum verileri .workspace-plus-plus/sessions.json konumuna taşındı.',
+        sessionDataMigrationFailed: 'Workspace++: Oturum verileri taşınamadı. Eski veriler korunuyor.',
+        localSettingsEnabled: 'Workspace++: Vault yerel ayarları etkinleştirildi.',
+        localSettingsDisabled: 'Workspace++: Vault yerel ayarları devre dışı bırakıldı.',
+        localSettingsCopied: 'Workspace++: Genel ayarlar vault yerel ayarlarına kopyalandı.',
+        localSettingsLoadFailed: 'Workspace++: Vault yerel ayarları yüklenemedi. Genel ayarlar kullanılacak.',
+        localSettingsOperationFailed: 'Workspace++: Vault yerel ayarları güncellenemedi.',
+        exportSessionsDone: function (path) { return 'Workspace++: Oturumlar ' + path + ' konumuna dışa aktarıldı'; },
+        exportSessionsFailed: 'Workspace++: Oturumlar dışa aktarılamadı.',
+        importSessionsDone: function (path) { return 'Workspace++: Oturumlar ' + path + ' konumundan içe aktarıldı'; },
+        importSessionsNoFile: 'Workspace++: .workspace-plus-plus/exports içinde dışa aktarma dosyası bulunamadı.',
+        importSessionsFailed: 'Workspace++: Oturumlar içe aktarılamadı.',
+        settingsSectionAdvanced: 'Gelişmiş',
+        settingsSectionReset: 'Sıfırla',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: 'Oturum listesi ve arama',
+        settingsSectionSwitchCommands: 'Geçiş komutları',
+        settingsSectionScrollSwitch: 'Kaydırarak geçiş',
+        settingsSubsectionSwitchSaving: 'Oturum değiştirirken kaydetme',
+        settingsSubsectionAutoSaveMode: 'Oturum otomatik kaydetme modu',
+        settingsSubsectionSwitchCommands: 'Oturum değiştirme komutları',
+        settingsSubsectionScrollSwitch: 'Kaydırarak oturum değiştirme',
+        settingsSubsectionSwitchPreview: 'Oturum değiştirmeden önce önizleme',
+        settingsStatusBarScrollPreset: 'Kaydırma girişi ön ayarı',
+        settingsStatusBarScrollPresetDesc: 'Aygıtınıza uygun bir ön ayar seçin ya da değerleri kendiniz ayarlamak için Özel seçeneğine geçin.',
+        settingsStatusBarScrollPresetTrackpad: 'İzleme dörtgeni',
+        settingsStatusBarScrollPresetNotchedWheel: 'Kademeli fare tekerleği',
+        settingsStatusBarScrollPresetFreeSpinWheel: 'Serbest dönen fare tekerleği',
+        settingsStatusBarScrollPresetCustom: 'Özel',
+        settingsStatusBarScrollModifier: 'Gerekli değiştirici tuş',
+        settingsStatusBarScrollModifierDesc: 'Durum çubuğu öğesi üzerinde kaydırırken hangi değiştirici tuşun basılı tutulacağını seçin.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd veya Option', 'Ctrl veya Alt'),
+        settingsStatusBarScrollModifierNone: 'Yok',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Yalnızca Cmd', 'Yalnızca Ctrl'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Yalnızca Option', 'Yalnızca Alt'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd veya Option', 'Ctrl veya Alt'),
+        settingsStatusBarScrollThreshold: 'Hassasiyet eşiği',
+        settingsStatusBarScrollThresholdDesc: 'Değer düştükçe geçiş daha kolay tetiklenir. Yalnızca Özel ön ayarda kullanılır.',
+        settingsStatusBarScrollCooldown: 'Bekleme süresi',
+        settingsStatusBarScrollCooldownDesc: 'Kaydırmayla tetiklenen oturum geçişleri arasındaki en kısa süredir. Yalnızca Özel ön ayarda kullanılır.',
+        settingsStatusBarScrollResetWindow: 'Birikim sıfırlama penceresi',
+        settingsStatusBarScrollResetWindowDesc: 'Küçük kaydırma farklarının sıfırlanmadan önce ne kadar süre biriktirileceğini belirler. Yalnızca Özel ön ayarda kullanılır.',
+        settingsStatusBarScrollInvert: 'Kaydırma yönünü ters çevir',
+        settingsStatusBarScrollInvertDesc: 'Durum çubuğunda kaydırarak oturum değiştirirken önceki/sonraki yönünü tersine çevirir.',
+        settingsUseLocalSettings: 'Vault yerel ayarlarını kullan',
+        settingsUseLocalSettingsDesc: '.obsidian klasörünü birden çok vault arasında senkronize ediyorsanız (örneğin Settings Profiles ile) ve Workspace++ ayarlarını vault bazında farklı tutmak istiyorsanız bunu açın.',
+        settingsCopyGlobalToLocal: 'Genel ayarları bu vaulta kopyala',
+        settingsCopyGlobalToLocalDesc: 'Vault yerel ayarlarını mevcut genel ayarlarla üzerine yazar.',
+        settingsCopyGlobalToLocalBtn: 'Kopyala',
+        settingsResetLocalSettings: 'Vault yerel ayarlarını sıfırla',
+        settingsResetLocalSettingsDesc: 'Vault yerel ayarlarını genel ayarlara geri döndürür.',
+        settingsResetLocalSettingsBtn: 'Yereli sıfırla',
+        settingsAdvancedStorageSubsection: 'Depolama davranışı',
+        settingsAdvancedTransferSubsection: 'Veri aktarımı',
+        settingsDeveloperSection: 'Geliştirici araçları',
+        settingsStorageDiagnostics: 'Depolama tanılama',
+        settingsStorageDiagnosticsDesc: 'Workspace++ tarafından şu anda kullanılan depolama ayrıntıları.',
+        settingsStorageFieldSessions: 'Oturum dosyası',
+        settingsStorageFieldSessionsBackup: 'Oturum yedeği',
+        settingsStorageFieldLocalSettings: 'Yerel ayar dosyası',
+        settingsStorageFieldGlobalSettings: 'Genel ayar dosyası',
+        settingsStorageFieldSessionCount: 'Oturum sayısı',
+        settingsStorageFieldUpdatedAt: 'Güncellenme zamanı',
+        settingsExportSessions: 'Oturumları dışa aktar',
+        settingsExportSessionsDesc: 'Bir anlık görüntüyü .workspace-plus-plus/exports içine kaydeder.',
+        settingsExportSessionsBtn: 'Dışa aktar',
+        settingsImportSessions: 'Oturumları içe aktar',
+        settingsImportSessionsDesc: '.workspace-plus-plus/exports içindeki en son anlık görüntüyü içe aktarır.',
+        settingsImportSessionsBtn: 'En sonu içe aktar',
+        confirmImportSessions: 'En son dışa aktarılan oturumlar içe aktarılsın mı? Mevcut oturumlar değiştirilecek.',
+        settingsResetSettings: 'Ayarları sıfırla',
+        settingsResetSettingsDesc: 'Workspace++ ayarlarını mevcut ayar kapsamında varsayılanlara döndürür.',
+        settingsResetSettingsBtn: 'Ayarları sıfırla',
+        confirmResetSettings: 'Workspace++ ayarları varsayılana sıfırlansın mı?',
+        resetSettingsDone: 'Workspace++ ayarları sıfırlandı.',
+        resetSettingsFailed: 'Workspace++ ayarları sıfırlanamadı.',
+        settingsResetSessionsAndSettings: 'Oturumları ve ayarları sıfırla',
+        settingsResetSessionsAndSettingsDesc: 'Kaydedilmiş oturumları ve Workspace++ ayarlarını birlikte sıfırlar.',
+        settingsResetSessionsAndSettingsBtn: 'İkisini de sıfırla',
+        confirmResetSessionsAndSettings: 'Oturumlar ve ayarlar sıfırlansın mı? Bu işlem geri alınamaz.',
+        resetSessionsAndSettingsDone: 'Oturumlar ve ayarlar sıfırlandı.',
+        resetSessionsAndSettingsFailed: 'Oturumlar ve ayarlar sıfırlanamadı.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: 'Geçerli not adını oturum olarak kaydet',
+        noActiveMarkdownFile: 'Etkin Markdown notu yok.',
+        savedCurrentNoteNameAsSession: function (n) { return 'Geçerli not "' + n + '" oturumu olarak kaydedildi'; },
+        saveCurrentNoteNameAsSessionFailed: 'Geçerli not adı oturum olarak kaydedilemedi.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + kaydırma ile oturum değiştir',
@@ -241,6 +348,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u201c' + n + '\u201d oturumu zaten aktif'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: 'Oturum geri yükleme',
+        settingsRestoreSidebars: 'Yan çubukları geri yükle',
+        settingsRestoreSidebarsDesc: 'Kapalıyken, oturum değiştirirken veya geri yüklerken yalnızca ana düzenleyici alanı geri yüklenir; mevcut sol ve sağ yan çubuklar korunur.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: 'Yedekleri ve sürüm geçmişini sil',
@@ -258,11 +372,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++ verileri sıfırlanamadı.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: 'Oturum geri yükleme',
-        settingsRestoreSidebars: 'Yan çubukları geri yükle',
-        settingsRestoreSidebarsDesc: 'Kapalıyken, oturum değiştirirken veya geri yüklerken yalnızca ana düzenleyici alanı geri yüklenir; mevcut sol ve sağ yan çubuklar korunur.',
-};
-
-export const tr = Object.assign({}, main, reset, restore);
+export const tr = Object.assign({}, extended, note, main, restore, reset);

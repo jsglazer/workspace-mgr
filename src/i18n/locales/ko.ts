@@ -5,6 +5,113 @@
 // these are translated string tables, not logic.)
 import { ruPlural, arPlural, isMacPlatform, platformLabel, modifiedClickLabel } from '../helpers';
 
+const extended = {
+
+        confirmOverwriteSessionWithCurrentLayout: function (n) { return '"' + n + '" 세션을 현재 레이아웃으로 덮어쓰시겠습니까?'; },
+        cmdSaveCurrentLayoutToSession: '현재 레이아웃을 세션에 저장...',
+        savedCurrentLayoutToSession: function (n) { return '현재 레이아웃을 "' + n + '"에 저장했습니다'; },
+        saveCurrentLayoutToSessionPlaceholder: '덮어쓸 세션 선택...',
+        contextSaveCurrentLayoutToThisSession: '현재 레이아웃을 이 세션에 저장',
+        cmdExportSessions: '세션 스냅샷 내보내기',
+        cmdImportSessions: '최신 세션 스냅샷 가져오기',
+        cmdReloadCurrentWithoutSaving: '현재 세션 다시 불러오기 (저장 안 함)',
+        reloadedSession: function (n) { return '“' + n + '” 세션을 다시 불러왔습니다'; },
+        defaultSessionName: '기본',
+        nameSessionTitle: '세션 이름을 지정하고 저장',
+        nameSessionPlaceholder: '세션 이름...',
+        saveWithoutNaming: '이름 없이 저장',
+        sessionDataMigrated: 'Workspace++: 세션 데이터가 .workspace-plus-plus/sessions.json 으로 이동되었습니다.',
+        sessionDataMigrationFailed: 'Workspace++: 세션 데이터 마이그레이션에 실패했습니다. 기존 데이터는 유지됩니다.',
+        localSettingsEnabled: 'Workspace++: 볼트 로컬 설정이 활성화되었습니다.',
+        localSettingsDisabled: 'Workspace++: 볼트 로컬 설정이 비활성화되었습니다.',
+        localSettingsCopied: 'Workspace++: 전역 설정을 볼트 로컬 설정으로 복사했습니다.',
+        localSettingsLoadFailed: 'Workspace++: 볼트 로컬 설정을 불러오지 못했습니다. 전역 설정을 사용합니다.',
+        localSettingsOperationFailed: 'Workspace++: 볼트 로컬 설정을 업데이트하지 못했습니다.',
+        exportSessionsDone: function (path) { return 'Workspace++: 세션을 ' + path + ' 로 내보냈습니다.'; },
+        exportSessionsFailed: 'Workspace++: 세션 내보내기에 실패했습니다.',
+        importSessionsDone: function (path) { return 'Workspace++: ' + path + ' 에서 세션을 가져왔습니다.'; },
+        importSessionsNoFile: 'Workspace++: .workspace-plus-plus/exports 에 가져올 파일이 없습니다.',
+        importSessionsFailed: 'Workspace++: 세션 가져오기에 실패했습니다.',
+        settingsSectionAdvanced: '고급',
+        settingsSectionReset: '초기화',
+        settingsGitHubLink: 'GitHub',
+        settingsSectionSessionListSearch: '세션 목록 및 검색',
+        settingsSectionSwitchCommands: '전환 명령',
+        settingsSectionScrollSwitch: '스크롤 전환',
+        settingsSubsectionSwitchSaving: '세션 전환 시 저장',
+        settingsSubsectionAutoSaveMode: '세션 자동 저장 모드',
+        settingsSubsectionSwitchCommands: '세션 전환 명령',
+        settingsSubsectionScrollSwitch: '스크롤로 세션 전환',
+        settingsSubsectionSwitchPreview: '세션 전환 전 미리보기',
+        settingsStatusBarScrollPreset: '스크롤 입력 프리셋',
+        settingsStatusBarScrollPresetDesc: '사용 중인 장치에 맞는 프리셋을 선택하거나, 직접 수치를 조정하려면 사용자 지정을 선택하세요.',
+        settingsStatusBarScrollPresetTrackpad: '트랙패드',
+        settingsStatusBarScrollPresetNotchedWheel: '노치형 마우스 휠',
+        settingsStatusBarScrollPresetFreeSpinWheel: '프리스핀 마우스 휠',
+        settingsStatusBarScrollPresetCustom: '사용자 지정',
+        settingsStatusBarScrollModifier: '필수 보조 키',
+        settingsStatusBarScrollModifierDesc: '상태 표시줄 항목 위에서 스크롤할 때 함께 눌러야 하는 보조 키를 선택하세요.',
+        settingsStatusBarScrollModifierRecommended: platformLabel('Cmd 또는 Option', 'Ctrl 또는 Alt'),
+        settingsStatusBarScrollModifierNone: '없음',
+        settingsStatusBarScrollModifierModOnly: platformLabel('Cmd만', 'Ctrl만'),
+        settingsStatusBarScrollModifierAltOnly: platformLabel('Option만', 'Alt만'),
+        settingsStatusBarScrollModifierModOrAlt: platformLabel('Cmd 또는 Option', 'Ctrl 또는 Alt'),
+        settingsStatusBarScrollThreshold: '민감도 임계값',
+        settingsStatusBarScrollThresholdDesc: '값이 낮을수록 더 쉽게 전환됩니다. 사용자 지정 프리셋에서만 사용됩니다.',
+        settingsStatusBarScrollCooldown: '쿨다운',
+        settingsStatusBarScrollCooldownDesc: '스크롤로 세션 전환이 트리거될 때의 최소 간격입니다. 사용자 지정 프리셋에서만 사용됩니다.',
+        settingsStatusBarScrollResetWindow: '누적 초기화 시간',
+        settingsStatusBarScrollResetWindowDesc: '작은 스크롤 변화량을 초기화하기 전에 얼마나 오래 누적할지 설정합니다. 사용자 지정 프리셋에서만 사용됩니다.',
+        settingsStatusBarScrollInvert: '스크롤 방향 반전',
+        settingsStatusBarScrollInvertDesc: '상태 표시줄 스크롤 전환에서 이전/다음 방향을 반대로 합니다.',
+        settingsUseLocalSettings: '볼트 로컬 설정 사용',
+        settingsUseLocalSettingsDesc: '여러 볼트에서 .obsidian을 동기화하는 경우(예: Settings Profiles) Workspace++ 설정을 볼트별로 다르게 유지하려면 켜세요.',
+        settingsCopyGlobalToLocal: '전역 설정을 이 볼트로 복사',
+        settingsCopyGlobalToLocalDesc: '현재 전역 설정으로 볼트 로컬 설정을 덮어씁니다.',
+        settingsCopyGlobalToLocalBtn: '복사',
+        settingsResetLocalSettings: '볼트 로컬 설정 초기화',
+        settingsResetLocalSettingsDesc: '볼트 로컬 설정을 전역 설정으로 되돌립니다.',
+        settingsResetLocalSettingsBtn: '로컬 초기화',
+        settingsAdvancedStorageSubsection: '저장 동작',
+        settingsAdvancedTransferSubsection: '데이터 이전',
+        settingsDeveloperSection: '개발자 도구',
+        settingsStorageDiagnostics: '저장 진단',
+        settingsStorageDiagnosticsDesc: 'Workspace++가 현재 사용하는 저장 정보입니다.',
+        settingsStorageFieldSessions: '세션 파일',
+        settingsStorageFieldSessionsBackup: '세션 백업',
+        settingsStorageFieldLocalSettings: '로컬 설정 파일',
+        settingsStorageFieldGlobalSettings: '전역 설정 파일',
+        settingsStorageFieldSessionCount: '세션 수',
+        settingsStorageFieldUpdatedAt: '업데이트 시간',
+        settingsExportSessions: '세션 내보내기',
+        settingsExportSessionsDesc: '.workspace-plus-plus/exports 에 스냅샷을 저장합니다.',
+        settingsExportSessionsBtn: '내보내기',
+        settingsImportSessions: '세션 가져오기',
+        settingsImportSessionsDesc: '.workspace-plus-plus/exports 의 최신 스냅샷을 가져옵니다.',
+        settingsImportSessionsBtn: '최신 가져오기',
+        confirmImportSessions: '가장 최근에 내보낸 세션을 가져오시겠습니까? 현재 세션은 대체됩니다.',
+        settingsResetSettings: '설정 초기화',
+        settingsResetSettingsDesc: '현재 설정 범위에서 Workspace++ 설정을 기본값으로 되돌립니다.',
+        settingsResetSettingsBtn: '설정 초기화',
+        confirmResetSettings: 'Workspace++ 설정을 기본값으로 초기화하시겠습니까?',
+        resetSettingsDone: 'Workspace++ 설정이 초기화되었습니다.',
+        resetSettingsFailed: 'Workspace++ 설정 초기화에 실패했습니다.',
+        settingsResetSessionsAndSettings: '세션과 설정 초기화',
+        settingsResetSessionsAndSettingsDesc: '저장된 세션과 Workspace++ 설정을 한 번에 초기화합니다.',
+        settingsResetSessionsAndSettingsBtn: '둘 다 초기화',
+        confirmResetSessionsAndSettings: '세션과 설정을 모두 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+        resetSessionsAndSettingsDone: '세션과 설정이 초기화되었습니다.',
+        resetSessionsAndSettingsFailed: '세션과 설정 초기화에 실패했습니다.',
+};
+
+const note = {
+
+        cmdSaveCurrentNoteNameAsSession: '현재 노트 이름으로 세션 저장',
+        noActiveMarkdownFile: '활성 Markdown 노트가 없습니다.',
+        savedCurrentNoteNameAsSession: function (n) { return '현재 노트를 "' + n + '" 세션으로 저장했습니다'; },
+        saveCurrentNoteNameAsSessionFailed: '현재 노트 이름으로 세션을 저장하지 못했습니다.',
+};
+
 const main = {
 
         settingsStatusBarModScrollSwitch: 'Mod + 스크롤로 세션 전환',
@@ -242,6 +349,13 @@ const main = {
         frontmatterAlreadyActive: function (n) { return '\u201c' + n + '\u201d \uc138\uc158\uc774 \uc774\ubbf8 \ud65c\uc131 \uc0c1\ud0dc\uc785\ub2c8\ub2e4'; },
 };
 
+const restore = {
+
+        settingsSubsectionSessionRestore: '세션 복원',
+        settingsRestoreSidebars: '사이드바도 복원',
+        settingsRestoreSidebarsDesc: '끄면 세션을 전환하거나 복원할 때 기본 편집 영역만 복원하고 현재 왼쪽/오른쪽 사이드바는 유지합니다.',
+};
+
 const reset = {
 
         settingsResetBackupsAndHistory: '백업과 버전 기록 삭제',
@@ -259,11 +373,4 @@ const reset = {
         resetSessionsAndSettingsFailed: 'Workspace++ 데이터 초기화에 실패했습니다.',
 };
 
-const restore = {
-
-        settingsSubsectionSessionRestore: '세션 복원',
-        settingsRestoreSidebars: '사이드바도 복원',
-        settingsRestoreSidebarsDesc: '끄면 세션을 전환하거나 복원할 때 기본 편집 영역만 복원하고 현재 왼쪽/오른쪽 사이드바는 유지합니다.',
-};
-
-export const ko = Object.assign({}, main, reset, restore);
+export const ko = Object.assign({}, extended, note, main, restore, reset);
