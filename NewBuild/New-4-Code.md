@@ -12,6 +12,19 @@ Downstream of you, **Gemini Flash (high reasoning)** reviews your code and runs/
 2. Optimize for "solo developer, local-first, highly testable." Determinism is non-negotiable: no hidden global state, no time/network/filesystem dependence in core logic, nothing that produces a flaky test.
 3. Every non-trivial unit of logic must be reachable by a headless test. If a piece of logic can't be tested headlessly, isolate it into the thinnest possible shell so the untestable surface is minimized.
 
+### Specific Guidance
+- You are replicating the features of this plugin: https://github.com/s1m4ne/obsidian-workspace-plus also at `/Users/josh/Dev/2-Projects/Obsidian/workspace-mgr/reference`
+- status-bar color-picker setting
+- Change css element ` .wpp-status-name` to ` .wsmgr-status-name`
+- explicitly port the 83 unit tests
+- Retain all languages but break the 7,600-line / ~670 KB i18n.js approach into a more efficient system
+- merge semantics: last-writer-wins by mtime for session contents
+- duplicate-on-conflict rename ((Conflict - <timestamp>))
+- Do not import old plugin's session, new sessions must be created
+- define a CSS custom property in styles.css and set it from the color-picker setting on the document root — no dynamic DOM injection needed (registerAndAddStyle (audit §5) is not a real Obsidian API)
+- sessions/manifest.json collides conceptually with the plugin's root manifest.json. Rename the session index to sessions/index.json to avoid confusion in both code and review.
+
+
 ## Precedence
 Where a concept-specific Build-to Constraint below conflicts with a Standing Build Convention, the Build-to Constraint wins — it was written knowing this particular concept.
 

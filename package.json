@@ -1,0 +1,29 @@
+{
+    "name": "obsidian-workspace-mgr",
+    "version": "1.0.0",
+    "description": "Workspace session manager for Obsidian with local-first, sync-friendly storage. Derived from obsidian-workspace-plus.",
+    "main": "main.js",
+    "type": "module",
+    "scripts": {
+        "dev": "node esbuild.config.mjs",
+        "build": "tsc --noEmit && node esbuild.config.mjs production",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit"
+    },
+    "keywords": [
+        "obsidian",
+        "workspace",
+        "session"
+    ],
+    "author": "jsglazer",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^22.10.0",
+        "builtin-modules": "^4.0.0",
+        "esbuild": "^0.25.0",
+        "obsidian": "^1.7.2",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.0"
+    }
+}

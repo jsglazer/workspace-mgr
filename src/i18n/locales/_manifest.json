@@ -1,0 +1,86 @@
+[
+  {
+    "lang": "en",
+    "name": "en"
+  },
+  {
+    "lang": "zh",
+    "name": "zh"
+  },
+  {
+    "lang": "zh-TW",
+    "name": "zh_TW"
+  },
+  {
+    "lang": "es",
+    "name": "es"
+  },
+  {
+    "lang": "fr",
+    "name": "fr"
+  },
+  {
+    "lang": "ar",
+    "name": "ar"
+  },
+  {
+    "lang": "pt",
+    "name": "pt"
+  },
+  {
+    "lang": "ru",
+    "name": "ru"
+  },
+  {
+    "lang": "de",
+    "name": "de"
+  },
+  {
+    "lang": "ja",
+    "name": "ja"
+  },
+  {
+    "lang": "ko",
+    "name": "ko"
+  },
+  {
+    "lang": "it",
+    "name": "it"
+  },
+  {
+    "lang": "tr",
+    "name": "tr"
+  },
+  {
+    "lang": "id",
+    "name": "id"
+  },
+  {
+    "lang": "vi",
+    "name": "vi"
+  },
+  {
+    "lang": "th",
+    "name": "th"
+  },
+  {
+    "lang": "hi",
+    "name": "hi"
+  },
+  {
+    "lang": "bn",
+    "name": "bn"
+  },
+  {
+    "lang": "fa",
+    "name": "fa"
+  },
+  {
+    "lang": "ms",
+    "name": "ms"
+  },
+  {
+    "lang": "pl",
+    "name": "pl"
+  }
+]
