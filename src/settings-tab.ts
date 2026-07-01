@@ -7,6 +7,7 @@ import * as i18n from './i18n';
 import { STATUS_NAME_COLOR_FALLBACK, UNSAVED_COLOR_FALLBACK } from './core/css';
 import type { SessionData } from './core/types';
 import type { SessionService } from './core/session-service';
+import CustomizeClicksModal from './modals/customize-clicks-modal';
 
 export interface SettingsHost {
     app: App;
@@ -17,6 +18,7 @@ export interface SettingsHost {
     /** Apply the current unsaved-highlight colour to the document-root custom property. */
     applyUnsavedHighlightColor(): void;
     updateStatusBar(): void;
+    setStatusBarAction(slotKey: string, actionId: string): Promise<unknown>;
 }
 
 export class WorkspaceMgrSettingTab extends PluginSettingTab {
@@ -82,6 +84,16 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                         this.host.applyStatusNameColor();
                         this.display();
                     }),
+            );
+
+        // --- Status-bar click actions ---
+        new Setting(containerEl)
+            .setName(L.contextCustomizeClicks)
+            .setDesc('Choose what happens when you click, ⌘-click, or ⌥-click the session name in the status bar.')
+            .addButton((b) =>
+                b.setButtonText(L.contextCustomizeClicks).onClick(() => {
+                    new CustomizeClicksModal(this.host.app, this.host).open();
+                }),
             );
 
         // --- Auto-save on switch ---

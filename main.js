@@ -13878,6 +13878,11 @@ var WorkspaceMgrSettingTab = class extends import_obsidian14.PluginSettingTab {
         this.display();
       })
     );
+    new import_obsidian14.Setting(containerEl).setName(L2.contextCustomizeClicks).setDesc("Choose what happens when you click, \u2318-click, or \u2325-click the session name in the status bar.").addButton(
+      (b) => b.setButtonText(L2.contextCustomizeClicks).onClick(() => {
+        new CustomizeClicksModal(this.host.app, this.host).open();
+      })
+    );
     new import_obsidian14.Setting(containerEl).setName(L2.settingsAutoSaveOnSwitch).setDesc(L2.settingsAutoSaveOnSwitchDesc).addToggle(
       (t) => t.setValue(this.host.session.isAutoSaveOnSwitchEnabled()).onChange(async (v) => {
         await this.host.session.setAutoSaveOnSwitch(v);
