@@ -13992,6 +13992,18 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
         this.applyUnsavedHighlightColor();
       })
     );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        this.session.noteStartupLayoutChange();
+        this.updateStatusBar();
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        if (this.isSwitchingSession) return;
+        setTimeout(() => this.updateStatusBar(), 0);
+      })
+    );
     this.session.syncSessionCommands();
     this.registerCommands();
     this.frontmatterCtl.registerFrontmatterListeners();

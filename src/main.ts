@@ -68,6 +68,18 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
                 this.applyUnsavedHighlightColor();
             }),
         );
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => {
+                this.session.noteStartupLayoutChange();
+                this.updateStatusBar();
+            }),
+        );
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => {
+                if (this.isSwitchingSession) return;
+                setTimeout(() => this.updateStatusBar(), 0);
+            }),
+        );
 
         this.session.syncSessionCommands();
         this.registerCommands();
