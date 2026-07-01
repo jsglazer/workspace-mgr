@@ -25,6 +25,8 @@ export interface Strings {
     modalTitle: string;
     savePlaceholder: string;
     filterPlaceholder: string;
+    managerCounter: LocaleFn;
+    managerKeyboardHint: string;
     settingsShowFilterInput: string;
     settingsShowFilterInputDesc: string;
     settingsOverlayDefaultFocus: string;

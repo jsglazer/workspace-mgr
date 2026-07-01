@@ -971,3 +971,115 @@ body.wsmgr-session-list-dragging * {
     text-align: center;
     padding: 24px 0;
 }
+
+/* ── Session Manager Modal ── */
+
+.wsmgr-manager-counter {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.wsmgr-manager-create {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.wsmgr-manager-name {
+    flex: 1;
+}
+
+.wsmgr-manager-filter {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.wsmgr-manager-groups {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.wsmgr-manager-group-tab {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--background-modifier-hover);
+    font-size: var(--font-ui-smaller);
+    cursor: pointer;
+}
+
+.wsmgr-manager-group-tab.is-selected {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.wsmgr-manager-group-add {
+    padding: 2px 8px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.wsmgr-manager-list {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.wsmgr-manager-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.wsmgr-manager-item:hover,
+.wsmgr-manager-item.is-selected {
+    background: var(--background-modifier-hover);
+}
+
+.wsmgr-manager-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wsmgr-manager-item-name {
+    font-weight: var(--font-semibold);
+    display: block;
+}
+
+.wsmgr-manager-item-time {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+.wsmgr-manager-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.wsmgr-manager-item-badge {
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    color: var(--text-on-accent);
+    background: var(--interactive-accent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-right: 4px;
+}
+
+.wsmgr-manager-item-icon {
+    padding: 4px;
+}
+
+/* ── Customize Click Actions Modal ── */
+
+.wsmgr-customize-clicks .setting-item {
+    padding: 8px 0;
+}

@@ -3,3 +3,4 @@ export { default as ConfirmModal } from './confirm-modal';
 export { default as RenameModal } from './rename-modal';
 export { default as UnsavedSwitchModal } from './unsaved-switch-modal';
 export { default as HistoryModal } from './history-modal';
+export { default as CustomizeClicksModal } from './customize-clicks-modal';

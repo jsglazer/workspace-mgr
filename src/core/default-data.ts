@@ -50,7 +50,7 @@ export const DEFAULT_DATA: SessionData = {
     unsavedHighlightColorDark: '',
     statusBarActions: {
         click: 'sessionManager',
-        altClick: 'reloadWithoutSaving',
+        altClick: 'nextSession',
         modClick: 'saveSession',
         shiftClick: 'none',
         middleClick: 'none',

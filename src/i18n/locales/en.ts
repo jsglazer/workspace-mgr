@@ -18,6 +18,8 @@ const main = {
         modalTitle: 'Manage sessions',
         savePlaceholder: 'New session name...',
         filterPlaceholder: 'Filter sessions...',
+        managerCounter: function (i, t) { return i + ' / ' + t; },
+        managerKeyboardHint: '↑↓ move / Enter switch / Del delete / Esc close',
         settingsShowFilterInput: 'Show session filter',
         settingsShowFilterInputDesc: 'Display a text filter in the Session Manager to quickly find sessions.',
         settingsOverlayDefaultFocus: 'Default overlay focus',

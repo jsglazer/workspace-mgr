@@ -5,6 +5,7 @@
 import { App, Notice } from 'obsidian';
 import * as i18n from './i18n';
 import HistoryModal from './modals/history-modal';
+import CustomizeClicksModal from './modals/customize-clicks-modal';
 import * as sessionContextMenu from './session-context-menu';
 import * as sessionListActions from './session-list-actions';
 import type { ConfirmModalOptions } from './modals/confirm-modal';
@@ -17,9 +18,12 @@ interface ContextActionPlugin {
         activeSessionId?: string | null;
         sessions?: Record<string, Session>;
         confirmDeleteByHotkey?: boolean;
+        statusBarActions?: Record<string, string> | null;
     };
     isGroupFeatureEnabled?(): boolean;
     getOrderedGroups?(): { id: string; name: string }[];
+    setStatusBarAction(slotKey: string, actionId: string): Promise<unknown>;
+    updateStatusBar(): void;
     saveActiveSession(): Promise<boolean>;
     reloadCurrentSessionWithoutSaving(): Promise<boolean>;
     saveAsSession(): Promise<boolean>;
@@ -47,6 +51,7 @@ export interface SessionContextActionOptions {
     showRemoveFromGroup?: boolean;
     showMoveToGroup?: boolean;
     showCustomizeClicks?: boolean;
+    onCustomizeClicks?: () => unknown;
     forceDeleteConfirm?: boolean;
     notifyDeleted?: boolean;
     deleteConfirmMessage?: string;
@@ -189,6 +194,9 @@ export function createSessionContextMenuOptions(options: SessionContextActionOpt
     function defaultVersionHistory() {
         return new HistoryModal(app, plugin, session).open();
     }
+    function defaultCustomizeClicks() {
+        return new CustomizeClicksModal(app, plugin).open();
+    }
 
     return {
         plugin,
@@ -201,6 +209,7 @@ export function createSessionContextMenuOptions(options: SessionContextActionOpt
         showRemoveFromGroup: optionOrDefault(opts, 'showRemoveFromGroup', !!getViewGroupId()),
         showMoveToGroup: optionOrDefault(opts, 'showMoveToGroup', shouldShowMoveToGroup(plugin)),
         showCustomizeClicks: !!opts.showCustomizeClicks,
+        onCustomizeClicks: opts.onCustomizeClicks || defaultCustomizeClicks,
         onSave: opts.onSave || defaultSave,
         onReload: opts.onReload || defaultReload,
         onSaveAs: opts.onSaveAs || defaultSaveAs,

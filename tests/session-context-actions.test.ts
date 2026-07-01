@@ -34,6 +34,13 @@ vi.mock('../src/modals/history-modal', () => ({
         }
     },
 }));
+vi.mock('../src/modals/customize-clicks-modal', () => ({
+    default: class {
+        open(): void {
+            h.actionCalls.push(['customizeClicks']);
+        }
+    },
+}));
 vi.mock('../src/session-context-menu', () => ({
     openSessionContextMenu: (options: Record<string, unknown>) => {
         h.menuOpens.push(options);
@@ -94,6 +101,11 @@ function createPlugin(calls: unknown[]) {
             calls.push(['moveGroup', sessionId, groupId]);
             return Promise.resolve(true);
         },
+        setStatusBarAction: (slotKey: string, actionId: string) => {
+            calls.push(['setStatusBarAction', slotKey, actionId]);
+            return Promise.resolve(true);
+        },
+        updateStatusBar: () => calls.push('updateStatusBar'),
     };
 }
 
@@ -126,6 +138,7 @@ describe('session-context-actions', () => {
         await menuOptions.onMoveToGroup('g1');
         menuOptions.onRename();
         menuOptions.onVersionHistory();
+        menuOptions.onCustomizeClicks();
 
         expect(calls).toEqual([
             'save',
@@ -146,6 +159,7 @@ describe('session-context-actions', () => {
         expect(h.actionCalls).toEqual([
             ['rename', 'b'],
             ['history', 'b'],
+            ['customizeClicks'],
         ]);
     });
 

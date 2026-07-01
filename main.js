@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => WorkspaceMgrPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/i18n/locales/en.ts
 var note = {
@@ -42,6 +42,10 @@ var main = {
   modalTitle: "Manage sessions",
   savePlaceholder: "New session name...",
   filterPlaceholder: "Filter sessions...",
+  managerCounter: function(i, t) {
+    return i + " / " + t;
+  },
+  managerKeyboardHint: "\u2191\u2193 move / Enter switch / Del delete / Esc close",
   settingsShowFilterInput: "Show session filter",
   settingsShowFilterInputDesc: "Display a text filter in the Session Manager to quickly find sessions.",
   settingsOverlayDefaultFocus: "Default overlay focus",
@@ -10184,7 +10188,7 @@ var DEFAULT_DATA = {
   unsavedHighlightColorDark: "",
   statusBarActions: {
     click: "sessionManager",
-    altClick: "reloadWithoutSaving",
+    altClick: "nextSession",
     modClick: "saveSession",
     shiftClick: "none",
     middleClick: "none",
@@ -12709,13 +12713,13 @@ function renderStatusBar(host) {
 }
 
 // src/statusbar-actions.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/modals/session-manager-modal.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/session-context-actions.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/modals/history-modal.ts
 var import_obsidian3 = require("obsidian");
@@ -12773,11 +12777,46 @@ var HistoryModal = class extends import_obsidian3.Modal {
   }
 };
 
-// src/session-context-menu.ts
+// src/modals/customize-clicks-modal.ts
 var import_obsidian4 = require("obsidian");
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function slotLabel(L2, slotKey) {
+  const label = L2["statusBarSlot" + capitalize(slotKey)];
+  return typeof label === "function" ? label() : label;
+}
+var CustomizeClicksModal = class extends import_obsidian4.Modal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+  onOpen() {
+    const L2 = L;
+    const contentEl = this.contentEl;
+    contentEl.addClass("wsmgr-customize-clicks");
+    this.titleEl.setText(L2.contextCustomizeClicks);
+    for (const slotKey of SLOT_KEYS) {
+      new import_obsidian4.Setting(contentEl).setName(slotLabel(L2, slotKey)).addDropdown((d) => {
+        for (const actionId of ACTION_IDS) d.addOption(actionId, getActionLabel(L2, actionId));
+        const current = (this.plugin.data.statusBarActions || {})[slotKey] || "none";
+        d.setValue(current).onChange(async (value) => {
+          await this.plugin.setStatusBarAction(slotKey, value);
+          this.plugin.updateStatusBar();
+        });
+      });
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// src/session-context-menu.ts
+var import_obsidian5 = require("obsidian");
 function openSessionContextMenu(options) {
   const L2 = L;
-  const menu = new import_obsidian4.Menu();
+  const menu = new import_obsidian5.Menu();
   const item = (title, icon, onClick) => {
     if (!onClick) return;
     menu.addItem((m) => m.setTitle(title).setIcon(icon).onClick(() => void onClick()));
@@ -12799,6 +12838,10 @@ function openSessionContextMenu(options) {
     }
   }
   if (options.showRemoveFromGroup) item(L2.groupRemoveFromGroup, "folder-minus", options.onRemoveFromGroup);
+  if (options.showCustomizeClicks) {
+    menu.addSeparator();
+    item(L2.contextCustomizeClicks, "mouse-pointer-click", options.onCustomizeClicks);
+  }
   menu.addSeparator();
   item(L2.contextDeleteSession, "trash", options.onDelete);
   const evt = options.event;
@@ -12807,11 +12850,11 @@ function openSessionContextMenu(options) {
 }
 
 // src/session-list-actions.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/modals/confirm-modal.ts
-var import_obsidian5 = require("obsidian");
-var ConfirmModal = class extends import_obsidian5.Modal {
+var import_obsidian6 = require("obsidian");
+var ConfirmModal = class extends import_obsidian6.Modal {
   constructor(app, message, onConfirm, options) {
     super(app);
     this.buttons = [];
@@ -12885,8 +12928,8 @@ var ConfirmModal = class extends import_obsidian5.Modal {
 };
 
 // src/modals/rename-modal.ts
-var import_obsidian6 = require("obsidian");
-var RenameModal = class extends import_obsidian6.Modal {
+var import_obsidian7 = require("obsidian");
+var RenameModal = class extends import_obsidian7.Modal {
   constructor(app, currentName, onRename, options) {
     super(app);
     this.buttons = [];
@@ -12928,7 +12971,7 @@ var RenameModal = class extends import_obsidian6.Modal {
           this.close();
           return;
         }
-        if (opts.emptyNotice) new import_obsidian6.Notice(opts.emptyNotice);
+        if (opts.emptyNotice) new import_obsidian7.Notice(opts.emptyNotice);
         return;
       }
       if (newName === this.currentName) return;
@@ -13042,12 +13085,12 @@ function deleteSessionWithPrompt(options) {
   const session = options.session;
   if (!app || !plugin || !session) return Promise.resolve(false);
   if (Object.keys(plugin.data.sessions || {}).length <= 1) {
-    if (options.notifyCannotDelete !== false) new import_obsidian7.Notice(L2.cannotDeleteLast);
+    if (options.notifyCannotDelete !== false) new import_obsidian8.Notice(L2.cannotDeleteLast);
     return Promise.resolve(false);
   }
   const doDelete = () => plugin.deleteSession(session.id).then((deleted) => {
     if (!deleted) return false;
-    if (options.notifyDeleted !== false) new import_obsidian7.Notice(L2.deleted(session.name));
+    if (options.notifyDeleted !== false) new import_obsidian8.Notice(L2.deleted(session.name));
     if (typeof options.onDeleted === "function") options.onDeleted(session);
     return true;
   });
@@ -13135,7 +13178,7 @@ function createSessionContextMenuOptions(options) {
     if (!groupId) return;
     const groupName = getGroupName(plugin, groupId);
     return plugin.removeSessionFromGroup(session.id, groupId).then(() => {
-      new import_obsidian8.Notice(L2.groupRemovedSession(session.name, groupName));
+      new import_obsidian9.Notice(L2.groupRemovedSession(session.name, groupName));
       refreshGroupsAndSessions(opts);
     });
   }
@@ -13143,7 +13186,7 @@ function createSessionContextMenuOptions(options) {
     const groupName = getGroupName(plugin, groupId);
     return plugin.moveSessionToGroupExclusive(session.id, groupId).then((moved) => {
       if (!moved) return false;
-      new import_obsidian8.Notice(L2.groupAddedSession(session.name, groupName));
+      new import_obsidian9.Notice(L2.groupAddedSession(session.name, groupName));
       refreshGroupsAndSessions(opts);
       return true;
     });
@@ -13165,6 +13208,9 @@ function createSessionContextMenuOptions(options) {
   function defaultVersionHistory() {
     return new HistoryModal(app, plugin, session).open();
   }
+  function defaultCustomizeClicks() {
+    return new CustomizeClicksModal(app, plugin).open();
+  }
   return {
     plugin,
     app,
@@ -13176,6 +13222,7 @@ function createSessionContextMenuOptions(options) {
     showRemoveFromGroup: optionOrDefault(opts, "showRemoveFromGroup", !!getViewGroupId()),
     showMoveToGroup: optionOrDefault(opts, "showMoveToGroup", shouldShowMoveToGroup(plugin)),
     showCustomizeClicks: !!opts.showCustomizeClicks,
+    onCustomizeClicks: opts.onCustomizeClicks || defaultCustomizeClicks,
     onSave: opts.onSave || defaultSave,
     onReload: opts.onReload || defaultReload,
     onSaveAs: opts.onSaveAs || defaultSaveAs,
@@ -13196,11 +13243,17 @@ function openSessionContextMenu2(options) {
 }
 
 // src/modals/session-manager-modal.ts
-var SessionManagerModal = class extends import_obsidian9.Modal {
+var SessionManagerModal = class extends import_obsidian10.Modal {
   constructor(app, plugin) {
     super(app);
     this.filter = "";
+    this.selectedGroupId = null;
+    this.selectedIndex = 0;
+    this.sessions = [];
     this.listEl = null;
+    this.groupsEl = null;
+    this.counterEl = null;
+    this.navKeyHandler = null;
     this.plugin = plugin;
   }
   onOpen() {
@@ -13208,6 +13261,7 @@ var SessionManagerModal = class extends import_obsidian9.Modal {
     const contentEl = this.contentEl;
     contentEl.addClass("wsmgr-manager");
     this.titleEl.setText(L2.modalTitle);
+    this.counterEl = contentEl.createDiv({ cls: "wsmgr-manager-counter" });
     const createRow = contentEl.createDiv({ cls: "wsmgr-manager-create" });
     const nameInput = createRow.createEl("input", {
       type: "text",
@@ -13215,14 +13269,25 @@ var SessionManagerModal = class extends import_obsidian9.Modal {
       cls: "wsmgr-manager-name"
     });
     const createBtn = createRow.createEl("button", { text: L2.save, cls: "mod-cta" });
-    createBtn.addEventListener("click", () => {
+    const doCreate = () => {
       void this.plugin.createSessionValidated(nameInput.value).then((res) => {
         if (res.created) {
           nameInput.value = "";
           this.renderList();
         }
       });
+    };
+    createBtn.addEventListener("click", doCreate);
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doCreate();
+      }
     });
+    if (this.plugin.isGroupFeatureEnabled()) {
+      this.groupsEl = contentEl.createDiv({ cls: "wsmgr-manager-groups" });
+      this.renderGroupTabs();
+    }
     if (this.plugin.data.showFilterInput) {
       const filterInput = contentEl.createEl("input", {
         type: "text",
@@ -13235,20 +13300,149 @@ var SessionManagerModal = class extends import_obsidian9.Modal {
       });
     }
     this.listEl = contentEl.createDiv({ cls: "wsmgr-manager-list" });
+    contentEl.createDiv({ cls: "wsmgr-modal-footer", text: L2.managerKeyboardHint });
     this.renderList();
+    this.navKeyHandler = (e) => {
+      var _a;
+      if (((_a = e.target) == null ? void 0 : _a.tagName) === "INPUT") return;
+      if (this.sessions.length === 0) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.sessions.length - 1);
+        this.updateSelectionHighlight();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        this.updateSelectionHighlight();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const session = this.sessions[this.selectedIndex];
+        if (session) void this.plugin.switchSession(session.id).then((ok) => ok && this.close());
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const session = this.sessions[this.selectedIndex];
+        if (session) this.deleteSession(session);
+      }
+    };
+    document.addEventListener("keydown", this.navKeyHandler, true);
+  }
+  renderGroupTabs() {
+    if (!this.groupsEl) return;
+    const L2 = L;
+    this.groupsEl.empty();
+    const allTab = this.groupsEl.createEl("button", { text: L2.groupAll, cls: "wsmgr-manager-group-tab" });
+    if (!this.selectedGroupId) allTab.addClass("is-selected");
+    allTab.addEventListener("click", () => {
+      this.selectedGroupId = null;
+      this.renderGroupTabs();
+      this.renderList();
+    });
+    for (const group of this.plugin.getOrderedGroups()) {
+      const tab = this.groupsEl.createEl("button", { text: group.name, cls: "wsmgr-manager-group-tab" });
+      if (this.selectedGroupId === group.id) tab.addClass("is-selected");
+      tab.addEventListener("click", () => {
+        this.selectedGroupId = group.id;
+        this.renderGroupTabs();
+        this.renderList();
+      });
+      tab.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        const menu = new import_obsidian10.Menu();
+        menu.addItem(
+          (m) => m.setTitle(L2.groupContextRename).setIcon("pencil").onClick(() => {
+            new RenameModal(
+              this.plugin.app,
+              group.name,
+              (newName) => {
+                void this.plugin.renameGroupValidated(group.id, newName).then(() => this.renderGroupTabs());
+              },
+              { title: L2.groupContextRename, placeholder: L2.groupCreatePlaceholder, buttonText: L2.save, emptyNotice: L2.groupEmptyName }
+            ).open();
+          })
+        );
+        menu.addItem(
+          (m) => m.setTitle(L2.groupContextDelete).setIcon("trash").onClick(() => {
+            new ConfirmModal(this.plugin.app, L2.confirmDeleteGroup(group.name), () => {
+              void this.plugin.deleteGroup(group.id).then(() => {
+                if (this.selectedGroupId === group.id) this.selectedGroupId = null;
+                this.renderGroupTabs();
+                this.renderList();
+              });
+            }).open();
+          })
+        );
+        menu.showAtMouseEvent(event);
+      });
+    }
+    const addTab = this.groupsEl.createEl("button", { text: "+", cls: "wsmgr-manager-group-add" });
+    addTab.setAttribute("aria-label", L2.groupCreateNew);
+    addTab.addEventListener("click", () => {
+      new RenameModal(
+        this.plugin.app,
+        "",
+        (name) => {
+          void this.plugin.createGroupValidated(name).then((groupId) => {
+            if (!groupId) return;
+            this.selectedGroupId = groupId;
+            this.renderGroupTabs();
+            this.renderList();
+          });
+        },
+        { title: L2.groupCreateNew, placeholder: L2.groupCreatePlaceholder, buttonText: L2.save, emptyNotice: L2.groupEmptyName }
+      ).open();
+    });
+  }
+  deleteSession(session) {
+    deleteSessionWithPrompt({
+      app: this.plugin.app,
+      plugin: this.plugin,
+      session,
+      isActive: session.id === this.plugin.data.activeSessionId,
+      onDeleted: () => {
+        this.plugin.updateStatusBar();
+        this.renderList();
+      }
+    });
   }
   renderList() {
     if (!this.listEl) return;
     const L2 = L;
     this.listEl.empty();
-    const sessions = this.plugin.getOrderedSessions().filter((s) => !this.filter || s.name.toLowerCase().includes(this.filter));
-    for (const session of sessions) {
+    const base = this.plugin.getOrderedSessionsForGroup(this.selectedGroupId);
+    this.sessions = base.filter((s) => !this.filter || s.name.toLowerCase().includes(this.filter));
+    const activeIdx = this.sessions.findIndex((s) => s.id === this.plugin.data.activeSessionId);
+    this.selectedIndex = activeIdx !== -1 ? activeIdx : 0;
+    for (const session of this.sessions) {
       const row = this.listEl.createDiv({ cls: "wsmgr-manager-item" });
       if (session.id === this.plugin.data.activeSessionId) row.addClass("is-active");
-      row.createSpan({ cls: "wsmgr-manager-item-name", text: session.name });
+      const info = row.createDiv({ cls: "wsmgr-manager-item-info" });
+      info.createSpan({ cls: "wsmgr-manager-item-name", text: session.name });
       if (typeof session.modified === "number") {
-        row.createSpan({ cls: "wsmgr-manager-item-time", text: formatRelativeTime(session.modified) });
+        info.createSpan({ cls: "wsmgr-manager-item-time", text: formatRelativeTime(session.modified) });
       }
+      const actions = row.createDiv({ cls: "wsmgr-manager-item-actions" });
+      if (session.id === this.plugin.data.activeSessionId) {
+        actions.createSpan({ cls: "wsmgr-manager-item-badge", text: L2.active });
+      }
+      const renameBtn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
+      (0, import_obsidian10.setIcon)(renameBtn, "pencil");
+      renameBtn.setAttribute("aria-label", L2.contextRenameSession);
+      renameBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        renameSessionWithPrompt({
+          app: this.plugin.app,
+          plugin: this.plugin,
+          session,
+          onRenamed: () => this.renderList()
+        });
+      });
+      const deleteBtn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
+      (0, import_obsidian10.setIcon)(deleteBtn, "trash");
+      deleteBtn.setAttribute("aria-label", L2.contextDeleteSession);
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.deleteSession(session);
+      });
       row.addEventListener("click", () => {
         void this.plugin.switchSession(session.id).then((ok) => {
           if (ok) this.close();
@@ -13267,16 +13461,30 @@ var SessionManagerModal = class extends import_obsidian9.Modal {
         });
       });
     }
-    if (sessions.length === 0) this.listEl.createEl("p", { text: L2.noSession });
+    if (this.sessions.length === 0) this.listEl.createEl("p", { text: L2.noSession });
+    this.updateSelectionHighlight();
+  }
+  updateSelectionHighlight() {
+    if (!this.listEl || !this.counterEl) return;
+    const L2 = L;
+    const rows = this.listEl.children;
+    for (let i = 0; i < rows.length; i++) {
+      rows[i].classList.toggle("is-selected", i === this.selectedIndex);
+    }
+    this.counterEl.setText(this.sessions.length === 0 ? "0 / 0" : L2.managerCounter(this.selectedIndex + 1, this.sessions.length));
   }
   onClose() {
+    if (this.navKeyHandler) {
+      document.removeEventListener("keydown", this.navKeyHandler, true);
+      this.navKeyHandler = null;
+    }
     this.contentEl.empty();
   }
 };
 
 // src/modals/unsaved-switch-modal.ts
-var import_obsidian10 = require("obsidian");
-var UnsavedSwitchModal = class extends import_obsidian10.Modal {
+var import_obsidian11 = require("obsidian");
+var UnsavedSwitchModal = class extends import_obsidian11.Modal {
   constructor(app, message, onSaveAndSwitch, onSwitchWithoutSaving, onCancel) {
     super(app);
     this.didResolve = false;
@@ -13357,11 +13565,11 @@ var UnsavedSwitchModal = class extends import_obsidian10.Modal {
 };
 
 // src/settings-context-menu.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 function openSettingsContextMenu(options) {
   const L2 = L;
   const { plugin } = options;
-  const menu = new import_obsidian11.Menu();
+  const menu = new import_obsidian12.Menu();
   const changed = () => {
     if (typeof options.onChanged === "function") options.onChanged();
   };
@@ -13377,6 +13585,10 @@ function openSettingsContextMenu(options) {
 }
 
 // src/statusbar-actions.ts
+function resolveLabel(L2, labelKey) {
+  const label = L2[labelKey];
+  return typeof label === "function" ? label() : label;
+}
 function openSessionMenuAction(plugin, event) {
   const sess = plugin.getActiveSession();
   if (!sess) return;
@@ -13455,12 +13667,12 @@ var ACTIONS = [
     run: (plugin) => {
       const L2 = L;
       if (!plugin.isVersionHistoryEnabled()) {
-        new import_obsidian12.Notice(L2.historyNoEntries);
+        new import_obsidian13.Notice(L2.historyNoEntries);
         return;
       }
       const activeSession = plugin.getActiveSession();
       if (!activeSession || !activeSession.history || activeSession.history.length === 0) {
-        new import_obsidian12.Notice(L2.historyNoEntries);
+        new import_obsidian13.Notice(L2.historyNoEntries);
         return;
       }
       if (plugin.isVersionHistoryConfirmRestoreEnabled()) {
@@ -13492,7 +13704,25 @@ function executeStatusBarAction(plugin, actionId, event) {
   if (!action) return;
   return action.run(plugin, event);
 }
+function getActionLabel(L2, actionId) {
+  const action = ACTION_INDEX[actionId] || ACTION_INDEX.none;
+  return resolveLabel(L2, action.labelKey);
+}
 var ACTION_IDS = ACTIONS.map((a) => a.id);
+var SLOT_KEYS = [
+  "click",
+  "altClick",
+  "modClick",
+  "shiftClick",
+  "middleClick",
+  "altMiddleClick",
+  "modMiddleClick",
+  "shiftMiddleClick",
+  "rightClick",
+  "altRightClick",
+  "modRightClick",
+  "shiftRightClick"
+];
 
 // src/statusbar-controller.ts
 var STATUS_BAR_SCROLL_PRESETS = {
@@ -13605,8 +13835,8 @@ function setupStatusBar(plugin) {
 }
 
 // src/settings-tab.ts
-var import_obsidian13 = require("obsidian");
-var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
+var import_obsidian14 = require("obsidian");
+var WorkspaceMgrSettingTab = class extends import_obsidian14.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.host = plugin;
@@ -13620,7 +13850,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
       cls: "wsmgr-settings-notice",
       text: 'The core Obsidian "Workspace" plugin must be enabled for Workspace Manager to work.'
     });
-    new import_obsidian13.Setting(containerEl).setName("Status bar session name colour (light theme)").setDesc("Colour of the session name shown in the status bar when using a light theme.").addColorPicker((cp) => {
+    new import_obsidian14.Setting(containerEl).setName("Status bar session name colour (light theme)").setDesc("Colour of the session name shown in the status bar when using a light theme.").addColorPicker((cp) => {
       const current = data.statusBarNameColorLight || "";
       if (current) cp.setValue(current);
       cp.onChange(async (value) => {
@@ -13634,7 +13864,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
         this.display();
       })
     );
-    new import_obsidian13.Setting(containerEl).setName("Status bar session name colour (dark theme)").setDesc("Colour of the session name shown in the status bar when using a dark theme.").addColorPicker((cp) => {
+    new import_obsidian14.Setting(containerEl).setName("Status bar session name colour (dark theme)").setDesc("Colour of the session name shown in the status bar when using a dark theme.").addColorPicker((cp) => {
       const current = data.statusBarNameColorDark || "";
       if (current) cp.setValue(current);
       cp.onChange(async (value) => {
@@ -13648,22 +13878,22 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
         this.display();
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsAutoSaveOnSwitch).setDesc(L2.settingsAutoSaveOnSwitchDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsAutoSaveOnSwitch).setDesc(L2.settingsAutoSaveOnSwitchDesc).addToggle(
       (t) => t.setValue(this.host.session.isAutoSaveOnSwitchEnabled()).onChange(async (v) => {
         await this.host.session.setAutoSaveOnSwitch(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsWarnUnsavedSwitch).setDesc(L2.settingsWarnUnsavedSwitchDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsWarnUnsavedSwitch).setDesc(L2.settingsWarnUnsavedSwitchDesc).addToggle(
       (t) => t.setValue(this.host.session.isWarnOnUnsavedSwitchEnabled()).onChange(async (v) => {
         await this.host.session.setWarnOnUnsavedSwitch(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsHighlightUnsavedSessionChanges).setDesc(L2.settingsHighlightUnsavedSessionChangesDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsHighlightUnsavedSessionChanges).setDesc(L2.settingsHighlightUnsavedSessionChangesDesc).addToggle(
       (t) => t.setValue(this.host.session.isUnsavedStatusBarHighlightEnabled()).onChange(async (v) => {
         await this.host.session.setUnsavedStatusBarHighlight(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName("Unsaved highlight colour (light theme)").setDesc("Colour of the status bar when there are unsaved changes, using a light theme.").addColorPicker((cp) => {
+    new import_obsidian14.Setting(containerEl).setName("Unsaved highlight colour (light theme)").setDesc("Colour of the status bar when there are unsaved changes, using a light theme.").addColorPicker((cp) => {
       const current = data.unsavedHighlightColorLight || "";
       if (current) cp.setValue(current);
       cp.onChange(async (value) => {
@@ -13677,7 +13907,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
         this.display();
       })
     );
-    new import_obsidian13.Setting(containerEl).setName("Unsaved highlight colour (dark theme)").setDesc("Colour of the status bar when there are unsaved changes, using a dark theme.").addColorPicker((cp) => {
+    new import_obsidian14.Setting(containerEl).setName("Unsaved highlight colour (dark theme)").setDesc("Colour of the status bar when there are unsaved changes, using a dark theme.").addColorPicker((cp) => {
       const current = data.unsavedHighlightColorDark || "";
       if (current) cp.setValue(current);
       cp.onChange(async (value) => {
@@ -13691,22 +13921,22 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
         this.display();
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsRestoreSidebars).setDesc(L2.settingsRestoreSidebarsDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsRestoreSidebars).setDesc(L2.settingsRestoreSidebarsDesc).addToggle(
       (t) => t.setValue(this.host.session.isSidebarRestoreEnabled()).onChange(async (v) => {
         await this.host.session.setRestoreSidebars(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsNumberedSwitchCommands).setDesc(L2.settingsNumberedSwitchCommandsDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsNumberedSwitchCommands).setDesc(L2.settingsNumberedSwitchCommandsDesc).addToggle(
       (t) => t.setValue(data.numberedSwitchCommands !== false).onChange(async (v) => {
         await this.host.session.setNumberedSwitchCommands(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsVersionHistoryEnabled).setDesc(L2.settingsVersionHistoryEnabledDesc).addToggle(
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsVersionHistoryEnabled).setDesc(L2.settingsVersionHistoryEnabledDesc).addToggle(
       (t) => t.setValue(this.host.session.isVersionHistoryEnabled()).onChange(async (v) => {
         await this.host.session.setVersionHistoryEnabled(v);
       })
     );
-    new import_obsidian13.Setting(containerEl).setName(L2.settingsLanguage).addDropdown((d) => {
+    new import_obsidian14.Setting(containerEl).setName(L2.settingsLanguage).addDropdown((d) => {
       d.addOption("auto", "Auto");
       for (const lang of LANG_ORDER) d.addOption(lang, LANG_OPTIONS[lang]);
       d.setValue(data.language || "auto").onChange(async (v) => {
@@ -13719,7 +13949,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian13.PluginSettingTab {
 };
 
 // src/main.ts
-var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
+var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
   constructor() {
     super(...arguments);
     // Status-bar scroll state (consumed by statusbar-controller).
@@ -13737,7 +13967,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
     this.frontmatterCtl = new FrontmatterController();
     this.persistence.app = this.app;
     this.persistence.manifest = { id: this.manifest.id, dir: this.manifest.dir || "" };
-    this.persistence.platform = import_obsidian14.Platform;
+    this.persistence.platform = import_obsidian15.Platform;
     const savedSettings = await this.loadData() || {};
     const loadedSessions = await this.persistence.loadSessionDataFromStorage() || {};
     this.data = Object.assign({}, DEFAULT_DATA, loadedSessions, this.persistence.extractSettingsData(savedSettings));
@@ -13784,7 +14014,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
     s.addCommand = (cmd) => this.addCommand(cmd);
     s.removeCommand = (id2) => this.removeCommand(id2);
     s.notify = (m) => {
-      new import_obsidian14.Notice(m);
+      new import_obsidian15.Notice(m);
     };
     s.getCurrentWorkspaceLayout = () => this.layoutAdapter.getLayout();
     s.changeWorkspaceLayout = (layout) => this.layoutAdapter.changeLayout(layout);
@@ -13810,7 +14040,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
     p.clearVersionHistoryEntries = () => s.clearVersionHistoryEntries();
     p.resetSessionsToDefault = () => s.resetSessionsToDefault();
     p.notify = (m) => {
-      new import_obsidian14.Notice(m);
+      new import_obsidian15.Notice(m);
     };
     p.saveSettings = () => this.saveData(this.persistence.extractSettingsData(this.data));
   }
@@ -13880,8 +14110,23 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
   getOrderedGroups() {
     return this.session.getOrderedGroups();
   }
+  getOrderedSessionsForGroup(groupId) {
+    return this.session.getOrderedSessionsForGroup(groupId);
+  }
   isGroupFeatureEnabled() {
     return this.session.isGroupFeatureEnabled();
+  }
+  createGroupValidated(name) {
+    return this.session.createGroupValidated(name);
+  }
+  renameGroupValidated(groupId, newName) {
+    return this.session.renameGroupValidated(groupId, newName);
+  }
+  deleteGroup(groupId) {
+    return this.session.deleteGroup(groupId);
+  }
+  setStatusBarAction(slotKey, actionId) {
+    return this.session.setStatusBarAction(slotKey, actionId);
   }
   shouldShowUnsavedStatusBarHighlight() {
     return this.session.shouldShowUnsavedStatusBarHighlight();
@@ -13956,7 +14201,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
   renameCurrentSession() {
     const session = this.session.getActiveSession();
     if (!session) {
-      new import_obsidian14.Notice(L.noSession);
+      new import_obsidian15.Notice(L.noSession);
       return;
     }
     renameSessionWithPrompt({ app: this.app, plugin: this, session });
@@ -13999,7 +14244,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian14.Plugin {
   deleteCurrentSession() {
     const session = this.session.getActiveSession();
     if (!session) {
-      new import_obsidian14.Notice(L.noSession);
+      new import_obsidian15.Notice(L.noSession);
       return;
     }
     void deleteSessionWithPrompt({ app: this.app, plugin: this, session, isActive: true, forceConfirm: true });

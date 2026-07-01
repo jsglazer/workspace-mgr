@@ -1,7 +1,7 @@
 {
     "id": "workspace-mgr",
     "name": "Workspace Manager",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "minAppVersion": "1.11.0",
     "description": "Workspace session manager with a native-feeling UI/UX and sync-friendly, local-first storage.",
     "author": "jsglazer",

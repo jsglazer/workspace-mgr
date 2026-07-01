@@ -19,6 +19,7 @@ export interface SessionContextMenuOptions {
     showRemoveFromGroup?: boolean;
     showMoveToGroup?: boolean;
     showCustomizeClicks?: boolean;
+    onCustomizeClicks?: () => unknown;
     onSave?: () => unknown;
     onReload?: () => unknown;
     onSaveAs?: () => unknown;
@@ -61,6 +62,11 @@ export function openSessionContextMenu(options: SessionContextMenuOptions): void
         }
     }
     if (options.showRemoveFromGroup) item(L.groupRemoveFromGroup, 'folder-minus', options.onRemoveFromGroup);
+
+    if (options.showCustomizeClicks) {
+        menu.addSeparator();
+        item(L.contextCustomizeClicks, 'mouse-pointer-click', options.onCustomizeClicks);
+    }
 
     menu.addSeparator();
     item(L.contextDeleteSession, 'trash', options.onDelete);

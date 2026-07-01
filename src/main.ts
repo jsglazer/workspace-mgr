@@ -207,8 +207,23 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     getOrderedGroups(): Group[] {
         return this.session.getOrderedGroups();
     }
+    getOrderedSessionsForGroup(groupId: string | null): Session[] {
+        return this.session.getOrderedSessionsForGroup(groupId);
+    }
     isGroupFeatureEnabled(): boolean {
         return this.session.isGroupFeatureEnabled();
+    }
+    createGroupValidated(name: string): Promise<string | false> {
+        return this.session.createGroupValidated(name);
+    }
+    renameGroupValidated(groupId: string, newName: string): Promise<boolean> {
+        return this.session.renameGroupValidated(groupId, newName);
+    }
+    deleteGroup(groupId: string): Promise<boolean> {
+        return this.session.deleteGroup(groupId);
+    }
+    setStatusBarAction(slotKey: string, actionId: string): Promise<unknown> {
+        return this.session.setStatusBarAction(slotKey, actionId);
     }
     shouldShowUnsavedStatusBarHighlight(): boolean {
         return this.session.shouldShowUnsavedStatusBarHighlight();
