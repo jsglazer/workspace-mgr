@@ -1,4 +1,4 @@
-import { App, Modal, setIcon } from 'obsidian';
+import { App, Modal, Notice, setIcon } from 'obsidian';
 import * as i18n from '../i18n';
 import { openSessionContextMenu } from '../session-context-actions';
 import { renameSessionWithPrompt, deleteSessionWithPrompt } from '../session-list-actions';
@@ -21,6 +21,8 @@ interface ManagerPlugin {
     switchSession(sessionId: string): Promise<boolean>;
     duplicateSession(sessionId: string): Promise<unknown>;
     createSessionValidated(name: string): Promise<{ created: boolean }>;
+    addSessionToGroup(sessionId: string, groupId: string): Promise<boolean>;
+    removeSessionFromGroup(sessionId: string, groupId: string): Promise<boolean>;
     updateStatusBar(): void;
 }
 
@@ -43,6 +45,9 @@ export default class SessionManagerModal extends Modal {
     private listEl: HTMLElement | null = null;
     private counterEl: HTMLElement | null = null;
     private navKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+    private openDropdownEl: HTMLElement | null = null;
+    private openDropdownAnchor: HTMLElement | null = null;
+    private openDropdownCleanup: (() => void) | null = null;
 
     constructor(app: App, plugin: ManagerPlugin) {
         super(app);
@@ -152,6 +157,95 @@ export default class SessionManagerModal extends Modal {
         });
     }
 
+    private closeGroupDropdown(refresh: boolean): void {
+        if (this.openDropdownCleanup) {
+            this.openDropdownCleanup();
+            this.openDropdownCleanup = null;
+        }
+        if (this.openDropdownEl) {
+            this.openDropdownEl.remove();
+            this.openDropdownEl = null;
+        }
+        this.openDropdownAnchor = null;
+        if (refresh) this.renderList();
+    }
+
+    private openGroupDropdown(anchorEl: HTMLElement, session: Session, mode: 'add' | 'remove'): void {
+        const L = i18n.L;
+        const wasOpenForThisAnchor = this.openDropdownAnchor === anchorEl;
+        if (this.openDropdownEl) this.closeGroupDropdown(false);
+        if (wasOpenForThisAnchor) {
+            this.renderList();
+            return;
+        }
+
+        const sessionGroupIds = (this.plugin.data.sessionGroups || {})[session.id] || [];
+        const allGroups = this.plugin.getOrderedGroups();
+        const groups =
+            mode === 'add'
+                ? allGroups.filter((g) => sessionGroupIds.indexOf(g.id) === -1)
+                : allGroups.filter((g) => sessionGroupIds.indexOf(g.id) !== -1);
+
+        const dropdown = document.body.createDiv({ cls: 'wsmgr-manager-group-dropdown' });
+        dropdown.createDiv({ cls: 'wsmgr-manager-group-dropdown-header', text: L.groupDropdownHeader });
+        const listEl = dropdown.createDiv({ cls: 'wsmgr-manager-group-dropdown-list' });
+
+        const renderEmptyIfNeeded = (): void => {
+            if (listEl.children.length > 0) return;
+            listEl.createDiv({
+                cls: 'wsmgr-manager-group-dropdown-empty',
+                text: mode === 'add' ? L.groupNoGroupsToJoin : L.groupNoGroupsToLeave,
+            });
+        };
+
+        for (const group of groups) {
+            const row = listEl.createEl('label', { cls: 'wsmgr-manager-group-dropdown-item' });
+            const checkbox = row.createEl('input', { type: 'checkbox' });
+            checkbox.checked = mode === 'remove';
+            row.createSpan({ text: group.name });
+            row.addEventListener('click', (e) => e.stopPropagation());
+            checkbox.addEventListener('change', () => {
+                const action =
+                    mode === 'add'
+                        ? this.plugin.addSessionToGroup(session.id, group.id)
+                        : this.plugin.removeSessionFromGroup(session.id, group.id);
+                void action.then((changed) => {
+                    if (!changed) return;
+                    new Notice(
+                        mode === 'add' ? L.groupAddedSession(session.name, group.name) : L.groupRemovedSession(session.name, group.name),
+                    );
+                    row.remove();
+                    renderEmptyIfNeeded();
+                });
+            });
+        }
+        renderEmptyIfNeeded();
+
+        const rect = anchorEl.getBoundingClientRect();
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        dropdown.style.left = `${rect.left}px`;
+
+        this.openDropdownEl = dropdown;
+        this.openDropdownAnchor = anchorEl;
+
+        const onDocClick = (e: MouseEvent): void => {
+            if (dropdown.contains(e.target as Node)) return;
+            this.closeGroupDropdown(true);
+        };
+        const onKeydown = (e: KeyboardEvent): void => {
+            if (e.key === 'Escape') this.closeGroupDropdown(true);
+        };
+        // Deferred so the click that opened the dropdown doesn't immediately close it.
+        setTimeout(() => {
+            document.addEventListener('click', onDocClick, true);
+            document.addEventListener('keydown', onKeydown, true);
+        }, 0);
+        this.openDropdownCleanup = () => {
+            document.removeEventListener('click', onDocClick, true);
+            document.removeEventListener('keydown', onKeydown, true);
+        };
+    }
+
     private matchesFilter(session: Session): boolean {
         return !this.filter || session.name.toLowerCase().includes(this.filter);
     }
@@ -206,6 +300,26 @@ export default class SessionManagerModal extends Modal {
             this.deleteSession(session);
         });
 
+        if (this.plugin.isGroupFeatureEnabled() && this.plugin.getOrderedGroups().length > 0) {
+            actions.createDiv({ cls: 'wsmgr-manager-item-separator' });
+
+            const addBtn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
+            setIcon(addBtn, 'plus');
+            addBtn.setAttribute('aria-label', L.groupJoinGroups);
+            addBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openGroupDropdown(addBtn, session, 'add');
+            });
+
+            const removeBtn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
+            setIcon(removeBtn, 'minus');
+            removeBtn.setAttribute('aria-label', L.groupLeaveGroups);
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openGroupDropdown(removeBtn, session, 'remove');
+            });
+        }
+
         row.addEventListener('click', () => {
             void this.plugin.switchSession(session.id).then((ok) => {
                 if (ok) this.close();
@@ -247,7 +361,10 @@ export default class SessionManagerModal extends Modal {
             else this.collapsed.add(collapseKey);
             this.renderList();
         };
-        toggle.addEventListener('click', toggleCollapse);
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCollapse();
+        });
         header.addEventListener('click', (e) => {
             if ((e.target as HTMLElement).closest('.wsmgr-manager-group-actions')) return;
             toggleCollapse();
@@ -299,6 +416,7 @@ export default class SessionManagerModal extends Modal {
 
     private renderList(): void {
         if (!this.listEl) return;
+        if (this.openDropdownEl) this.closeGroupDropdown(false);
         const L = i18n.L;
         this.listEl.empty();
         this.sessions = [];
@@ -357,6 +475,7 @@ export default class SessionManagerModal extends Modal {
             document.removeEventListener('keydown', this.navKeyHandler, true);
             this.navKeyHandler = null;
         }
+        this.closeGroupDropdown(false);
         this.contentEl.empty();
     }
 }

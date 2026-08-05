@@ -361,6 +361,9 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     createSessionValidated(name: string): Promise<{ created: boolean }> {
         return this.session.createSessionValidated(name);
     }
+    addSessionToGroup(sessionId: string, groupId: string): Promise<boolean> {
+        return this.session.addSessionToGroup(sessionId, groupId);
+    }
     removeSessionFromGroup(sessionId: string, groupId: string): Promise<boolean> {
         return this.session.removeSessionFromGroup(sessionId, groupId);
     }

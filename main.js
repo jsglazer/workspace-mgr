@@ -410,6 +410,11 @@ var main = {
   },
   groupRemoveFromGroup: "Remove from group",
   groupMoveToGroup: "Move to group",
+  groupJoinGroups: "Add to group",
+  groupLeaveGroups: "Remove from group",
+  groupDropdownHeader: "Group",
+  groupNoGroupsToJoin: "Already in every group",
+  groupNoGroupsToLeave: "Not in any group",
   groupCreateNew: "New group",
   groupCreatePlaceholder: "Group name...",
   groupContextRename: "Rename group",
@@ -13336,6 +13341,9 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
     this.listEl = null;
     this.counterEl = null;
     this.navKeyHandler = null;
+    this.openDropdownEl = null;
+    this.openDropdownAnchor = null;
+    this.openDropdownCleanup = null;
     this.plugin = plugin;
   }
   onOpen() {
@@ -13434,6 +13442,79 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       }
     });
   }
+  closeGroupDropdown(refresh) {
+    if (this.openDropdownCleanup) {
+      this.openDropdownCleanup();
+      this.openDropdownCleanup = null;
+    }
+    if (this.openDropdownEl) {
+      this.openDropdownEl.remove();
+      this.openDropdownEl = null;
+    }
+    this.openDropdownAnchor = null;
+    if (refresh) this.renderList();
+  }
+  openGroupDropdown(anchorEl, session, mode) {
+    const L2 = L;
+    const wasOpenForThisAnchor = this.openDropdownAnchor === anchorEl;
+    if (this.openDropdownEl) this.closeGroupDropdown(false);
+    if (wasOpenForThisAnchor) {
+      this.renderList();
+      return;
+    }
+    const sessionGroupIds = (this.plugin.data.sessionGroups || {})[session.id] || [];
+    const allGroups = this.plugin.getOrderedGroups();
+    const groups = mode === "add" ? allGroups.filter((g) => sessionGroupIds.indexOf(g.id) === -1) : allGroups.filter((g) => sessionGroupIds.indexOf(g.id) !== -1);
+    const dropdown = document.body.createDiv({ cls: "wsmgr-manager-group-dropdown" });
+    dropdown.createDiv({ cls: "wsmgr-manager-group-dropdown-header", text: L2.groupDropdownHeader });
+    const listEl = dropdown.createDiv({ cls: "wsmgr-manager-group-dropdown-list" });
+    const renderEmptyIfNeeded = () => {
+      if (listEl.children.length > 0) return;
+      listEl.createDiv({
+        cls: "wsmgr-manager-group-dropdown-empty",
+        text: mode === "add" ? L2.groupNoGroupsToJoin : L2.groupNoGroupsToLeave
+      });
+    };
+    for (const group of groups) {
+      const row = listEl.createEl("label", { cls: "wsmgr-manager-group-dropdown-item" });
+      const checkbox = row.createEl("input", { type: "checkbox" });
+      checkbox.checked = mode === "remove";
+      row.createSpan({ text: group.name });
+      row.addEventListener("click", (e) => e.stopPropagation());
+      checkbox.addEventListener("change", () => {
+        const action = mode === "add" ? this.plugin.addSessionToGroup(session.id, group.id) : this.plugin.removeSessionFromGroup(session.id, group.id);
+        void action.then((changed) => {
+          if (!changed) return;
+          new import_obsidian10.Notice(
+            mode === "add" ? L2.groupAddedSession(session.name, group.name) : L2.groupRemovedSession(session.name, group.name)
+          );
+          row.remove();
+          renderEmptyIfNeeded();
+        });
+      });
+    }
+    renderEmptyIfNeeded();
+    const rect = anchorEl.getBoundingClientRect();
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.left = `${rect.left}px`;
+    this.openDropdownEl = dropdown;
+    this.openDropdownAnchor = anchorEl;
+    const onDocClick = (e) => {
+      if (dropdown.contains(e.target)) return;
+      this.closeGroupDropdown(true);
+    };
+    const onKeydown = (e) => {
+      if (e.key === "Escape") this.closeGroupDropdown(true);
+    };
+    setTimeout(() => {
+      document.addEventListener("click", onDocClick, true);
+      document.addEventListener("keydown", onKeydown, true);
+    }, 0);
+    this.openDropdownCleanup = () => {
+      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("keydown", onKeydown, true);
+    };
+  }
   matchesFilter(session) {
     return !this.filter || session.name.toLowerCase().includes(this.filter);
   }
@@ -13483,6 +13564,23 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       e.stopPropagation();
       this.deleteSession(session);
     });
+    if (this.plugin.isGroupFeatureEnabled() && this.plugin.getOrderedGroups().length > 0) {
+      actions.createDiv({ cls: "wsmgr-manager-item-separator" });
+      const addBtn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
+      (0, import_obsidian10.setIcon)(addBtn, "plus");
+      addBtn.setAttribute("aria-label", L2.groupJoinGroups);
+      addBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.openGroupDropdown(addBtn, session, "add");
+      });
+      const removeBtn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
+      (0, import_obsidian10.setIcon)(removeBtn, "minus");
+      removeBtn.setAttribute("aria-label", L2.groupLeaveGroups);
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.openGroupDropdown(removeBtn, session, "remove");
+      });
+    }
     row.addEventListener("click", () => {
       void this.plugin.switchSession(session.id).then((ok) => {
         if (ok) this.close();
@@ -13515,7 +13613,10 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       else this.collapsed.add(collapseKey);
       this.renderList();
     };
-    toggle.addEventListener("click", toggleCollapse);
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCollapse();
+    });
     header.addEventListener("click", (e) => {
       if (e.target.closest(".wsmgr-manager-group-actions")) return;
       toggleCollapse();
@@ -13563,6 +13664,7 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
   }
   renderList() {
     if (!this.listEl) return;
+    if (this.openDropdownEl) this.closeGroupDropdown(false);
     const L2 = L;
     this.listEl.empty();
     this.sessions = [];
@@ -13615,6 +13717,7 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       document.removeEventListener("keydown", this.navKeyHandler, true);
       this.navKeyHandler = null;
     }
+    this.closeGroupDropdown(false);
     this.contentEl.empty();
   }
 };
@@ -14448,6 +14551,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
   }
   createSessionValidated(name) {
     return this.session.createSessionValidated(name);
+  }
+  addSessionToGroup(sessionId, groupId) {
+    return this.session.addSessionToGroup(sessionId, groupId);
   }
   removeSessionFromGroup(sessionId, groupId) {
     return this.session.removeSessionFromGroup(sessionId, groupId);

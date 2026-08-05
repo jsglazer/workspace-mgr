@@ -124,4 +124,58 @@ describe('groups', () => {
         const result = await svc.duplicateGroup('missing');
         expect(result).toBe(false);
     });
+
+    test('addSessionToGroup joins a session to a group without evicting existing memberships', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' }, g2: { id: 'g2', name: 'Two' } },
+            sessions: { s1: { id: 's1', name: 'Session' } },
+            sessionGroups: { s1: ['g1'] },
+        });
+        const added = await svc.addSessionToGroup('s1', 'g2');
+        expect(added).toBe(true);
+        expect(svc.data.sessionGroups.s1.sort()).toEqual(['g1', 'g2']);
+    });
+
+    test('addSessionToGroup is a no-op when already a member', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' } },
+            sessions: { s1: { id: 's1', name: 'Session' } },
+            sessionGroups: { s1: ['g1'] },
+        });
+        const added = await svc.addSessionToGroup('s1', 'g1');
+        expect(added).toBe(false);
+        expect(svc.data.sessionGroups.s1).toEqual(['g1']);
+    });
+
+    test('removeSessionFromGroup leaves a group while keeping other memberships', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' }, g2: { id: 'g2', name: 'Two' } },
+            sessions: { s1: { id: 's1', name: 'Session' } },
+            sessionGroups: { s1: ['g1', 'g2'] },
+        });
+        const removed = await svc.removeSessionFromGroup('s1', 'g1');
+        expect(removed).toBe(true);
+        expect(svc.data.sessionGroups.s1).toEqual(['g2']);
+    });
+
+    test('removeSessionFromGroup deletes the entry once the last group is left', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' } },
+            sessions: { s1: { id: 's1', name: 'Session' } },
+            sessionGroups: { s1: ['g1'] },
+        });
+        const removed = await svc.removeSessionFromGroup('s1', 'g1');
+        expect(removed).toBe(true);
+        expect(svc.data.sessionGroups.s1).toBeUndefined();
+    });
+
+    test('removeSessionFromGroup is a no-op when not a member', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' } },
+            sessions: { s1: { id: 's1', name: 'Session' } },
+            sessionGroups: {},
+        });
+        const removed = await svc.removeSessionFromGroup('s1', 'g1');
+        expect(removed).toBe(false);
+    });
 });

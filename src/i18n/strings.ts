@@ -291,6 +291,11 @@ export interface Strings {
     groupRemovedSession: LocaleFn;
     groupRemoveFromGroup: string;
     groupMoveToGroup: string;
+    groupJoinGroups: string;
+    groupLeaveGroups: string;
+    groupDropdownHeader: string;
+    groupNoGroupsToJoin: string;
+    groupNoGroupsToLeave: string;
     groupCreateNew: string;
     groupCreatePlaceholder: string;
     groupContextRename: string;
