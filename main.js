@@ -13458,23 +13458,19 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
     const L2 = L;
     const wasOpenForThisAnchor = this.openDropdownAnchor === anchorEl;
     if (this.openDropdownEl) this.closeGroupDropdown(false);
-    if (wasOpenForThisAnchor) {
-      this.renderList();
-      return;
-    }
+    if (wasOpenForThisAnchor) return;
     const sessionGroupIds = (this.plugin.data.sessionGroups || {})[session.id] || [];
     const allGroups = this.plugin.getOrderedGroups();
     const groups = mode === "add" ? allGroups.filter((g) => sessionGroupIds.indexOf(g.id) === -1) : allGroups.filter((g) => sessionGroupIds.indexOf(g.id) !== -1);
-    const dropdown = document.body.createDiv({ cls: "wsmgr-manager-group-dropdown" });
+    const dropdown = this.contentEl.createDiv({ cls: "wsmgr-manager-group-dropdown" });
     dropdown.createDiv({ cls: "wsmgr-manager-group-dropdown-header", text: L2.groupDropdownHeader });
     const listEl = dropdown.createDiv({ cls: "wsmgr-manager-group-dropdown-list" });
-    const renderEmptyIfNeeded = () => {
-      if (listEl.children.length > 0) return;
+    if (groups.length === 0) {
       listEl.createDiv({
         cls: "wsmgr-manager-group-dropdown-empty",
         text: mode === "add" ? L2.groupNoGroupsToJoin : L2.groupNoGroupsToLeave
       });
-    };
+    }
     for (const group of groups) {
       const row = listEl.createEl("label", { cls: "wsmgr-manager-group-dropdown-item" });
       const checkbox = row.createEl("input", { type: "checkbox" });
@@ -13484,16 +13480,15 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       checkbox.addEventListener("change", () => {
         const action = mode === "add" ? this.plugin.addSessionToGroup(session.id, group.id) : this.plugin.removeSessionFromGroup(session.id, group.id);
         void action.then((changed) => {
-          if (!changed) return;
-          new import_obsidian10.Notice(
-            mode === "add" ? L2.groupAddedSession(session.name, group.name) : L2.groupRemovedSession(session.name, group.name)
-          );
-          row.remove();
-          renderEmptyIfNeeded();
+          if (changed) {
+            new import_obsidian10.Notice(
+              mode === "add" ? L2.groupAddedSession(session.name, group.name) : L2.groupRemovedSession(session.name, group.name)
+            );
+          }
+          this.closeGroupDropdown(true);
         });
       });
     }
-    renderEmptyIfNeeded();
     const rect = anchorEl.getBoundingClientRect();
     dropdown.style.top = `${rect.bottom + 4}px`;
     dropdown.style.left = `${rect.left}px`;

@@ -174,10 +174,7 @@ export default class SessionManagerModal extends Modal {
         const L = i18n.L;
         const wasOpenForThisAnchor = this.openDropdownAnchor === anchorEl;
         if (this.openDropdownEl) this.closeGroupDropdown(false);
-        if (wasOpenForThisAnchor) {
-            this.renderList();
-            return;
-        }
+        if (wasOpenForThisAnchor) return;
 
         const sessionGroupIds = (this.plugin.data.sessionGroups || {})[session.id] || [];
         const allGroups = this.plugin.getOrderedGroups();
@@ -186,17 +183,19 @@ export default class SessionManagerModal extends Modal {
                 ? allGroups.filter((g) => sessionGroupIds.indexOf(g.id) === -1)
                 : allGroups.filter((g) => sessionGroupIds.indexOf(g.id) !== -1);
 
-        const dropdown = document.body.createDiv({ cls: 'wsmgr-manager-group-dropdown' });
+        // Rendered inside the modal's own DOM (not document.body) so it stays
+        // within Obsidian's Modal focus/click handling instead of behaving as an
+        // unrelated outside element the modal may not interact with reliably.
+        const dropdown = this.contentEl.createDiv({ cls: 'wsmgr-manager-group-dropdown' });
         dropdown.createDiv({ cls: 'wsmgr-manager-group-dropdown-header', text: L.groupDropdownHeader });
         const listEl = dropdown.createDiv({ cls: 'wsmgr-manager-group-dropdown-list' });
 
-        const renderEmptyIfNeeded = (): void => {
-            if (listEl.children.length > 0) return;
+        if (groups.length === 0) {
             listEl.createDiv({
                 cls: 'wsmgr-manager-group-dropdown-empty',
                 text: mode === 'add' ? L.groupNoGroupsToJoin : L.groupNoGroupsToLeave,
             });
-        };
+        }
 
         for (const group of groups) {
             const row = listEl.createEl('label', { cls: 'wsmgr-manager-group-dropdown-item' });
@@ -209,17 +208,21 @@ export default class SessionManagerModal extends Modal {
                     mode === 'add'
                         ? this.plugin.addSessionToGroup(session.id, group.id)
                         : this.plugin.removeSessionFromGroup(session.id, group.id);
+                // Close (and refresh the underlying session list) right after a
+                // successful toggle rather than trying to keep this dropdown alive
+                // through a re-render — reopen it to act on another group.
                 void action.then((changed) => {
-                    if (!changed) return;
-                    new Notice(
-                        mode === 'add' ? L.groupAddedSession(session.name, group.name) : L.groupRemovedSession(session.name, group.name),
-                    );
-                    row.remove();
-                    renderEmptyIfNeeded();
+                    if (changed) {
+                        new Notice(
+                            mode === 'add'
+                                ? L.groupAddedSession(session.name, group.name)
+                                : L.groupRemovedSession(session.name, group.name),
+                        );
+                    }
+                    this.closeGroupDropdown(true);
                 });
             });
         }
-        renderEmptyIfNeeded();
 
         const rect = anchorEl.getBoundingClientRect();
         dropdown.style.top = `${rect.bottom + 4}px`;
