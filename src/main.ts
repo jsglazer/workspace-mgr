@@ -3,7 +3,7 @@
 // FrontmatterController), the LayoutAdapter (isolating workspace layout internals),
 // the status bar, commands, and the settings tab, then wires the core's collaborator
 // seams to real Obsidian behavior. No prototype patching — strict composition.
-import { Notice, Platform, Plugin } from 'obsidian';
+import { Menu, Notice, Platform, Plugin } from 'obsidian';
 import * as i18n from './i18n';
 import { SessionService } from './core/session-service';
 import { PersistenceService } from './core/persistence-service';
@@ -11,6 +11,7 @@ import { FrontmatterController } from './frontmatter';
 import { DEFAULT_DATA } from './core/default-data';
 import { statusNameColorValue, STATUS_NAME_COLOR_VAR, unsavedHighlightColorValue, UNSAVED_COLOR_VAR } from './core/css';
 import { createLayoutAdapter, type LayoutAdapter } from './adapter/layout-adapter';
+import { createMenuBarAdapter, type MenuBarAdapter } from './adapter/menubar-adapter';
 import { renderStatusBar } from './session-statusbar';
 import { setupStatusBar } from './statusbar-controller';
 import { WorkspaceMgrSettingTab, type SettingsHost } from './settings-tab';
@@ -24,6 +25,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     persistence!: PersistenceService;
     frontmatterCtl!: FrontmatterController;
     layoutAdapter!: LayoutAdapter;
+    menuBarAdapter: MenuBarAdapter | null = null;
     statusBarEl?: HTMLElement;
 
     // Status-bar scroll state (consumed by statusbar-controller).
@@ -85,6 +87,10 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.registerCommands();
         this.frontmatterCtl.registerFrontmatterListeners();
 
+        this.addRibbonIcon('panels-top-left', i18n.L.ribbonTooltip, (evt) => {
+            this.buildWorkspaceRibbonMenu().showAtMouseEvent(evt as MouseEvent);
+        });
+
         this.addSettingTab(new WorkspaceMgrSettingTab(this.app, this));
 
         this.session.startStartupSettleWindow();
@@ -99,6 +105,10 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.session.stopHistorySnapshotTimer();
         this.persistence.clearSessionStorageSyncTimers();
         this.session.clearSessionSwitchNotice();
+        if (this.menuBarAdapter) {
+            this.menuBarAdapter.destroy();
+            this.menuBarAdapter = null;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -158,6 +168,26 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             getActiveGroup: () => this.session.getActiveGroup(),
             shouldShowUnsavedStatusBarHighlight: () => this.session.shouldShowUnsavedStatusBarHighlight(),
         });
+        this.updateMacMenuBar();
+    }
+
+    // ------------------------------------------------------------------
+    // macOS menu bar (desktop-only, opt-in; see adapter/menubar-adapter.ts)
+    // ------------------------------------------------------------------
+    updateMacMenuBar(): void {
+        const shouldShow = !!this.data.macMenuBarEnabled && Platform.isMacOS && Platform.isDesktopApp;
+        if (!shouldShow) {
+            if (this.menuBarAdapter) {
+                this.menuBarAdapter.destroy();
+                this.menuBarAdapter = null;
+            }
+            return;
+        }
+        if (!this.menuBarAdapter) this.menuBarAdapter = createMenuBarAdapter();
+        if (!this.menuBarAdapter) return;
+        const session = this.session.getActiveSession();
+        const vaultName = this.app.vault.getName();
+        this.menuBarAdapter.setTitle(session ? `${vaultName} - ${session.name}` : vaultName);
     }
 
     private isDarkTheme(): boolean {
@@ -180,6 +210,52 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             this.isDarkTheme(),
         );
         document.documentElement.style.setProperty(UNSAVED_COLOR_VAR, value);
+    }
+
+    // ------------------------------------------------------------------
+    // Ribbon: Group -> Workspace quick switch menu
+    // ------------------------------------------------------------------
+    private buildWorkspaceRibbonMenu(): Menu {
+        const L = i18n.L;
+        const menu = new Menu();
+        const byName = (a: Session, b: Session): number => a.name.localeCompare(b.name);
+        const addSessionItem = (session: Session): void => {
+            menu.addItem((item) =>
+                item
+                    .setTitle(session.name)
+                    .setChecked(session.id === this.data.activeSessionId)
+                    .onClick(() => void this.session.switchSession(session.id)),
+            );
+        };
+
+        const allSessions = this.session.getOrderedSessions();
+        if (allSessions.length === 0) {
+            menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
+            return menu;
+        }
+
+        if (!this.session.isGroupFeatureEnabled()) {
+            for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
+            return menu;
+        }
+
+        const sessionGroups = (this.data.sessionGroups || {}) as Record<string, string[]>;
+        const ungrouped = allSessions
+            .filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0)
+            .sort(byName);
+        for (const session of ungrouped) addSessionItem(session);
+
+        let wroteBlock = ungrouped.length > 0;
+        const groups = this.session.getOrderedGroups().slice().sort((a, b) => a.name.localeCompare(b.name));
+        for (const group of groups) {
+            const groupSessions = this.session.getOrderedSessionsForGroup(group.id).slice().sort(byName);
+            if (groupSessions.length === 0) continue;
+            if (wroteBlock) menu.addSeparator();
+            menu.addItem((item) => item.setTitle(group.name).setIcon('folder').setDisabled(true));
+            for (const session of groupSessions) addSessionItem(session);
+            wroteBlock = true;
+        }
+        return menu;
     }
 
     // ------------------------------------------------------------------
@@ -233,6 +309,9 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     }
     deleteGroup(groupId: string): Promise<boolean> {
         return this.session.deleteGroup(groupId);
+    }
+    duplicateGroup(groupId: string): Promise<string | false> {
+        return this.session.duplicateGroup(groupId);
     }
     setStatusBarAction(slotKey: string, actionId: string): Promise<unknown> {
         return this.session.setStatusBarAction(slotKey, actionId);

@@ -1308,6 +1308,36 @@ export class SessionService {
         return this.persistData().then(() => true);
     }
 
+    /** Duplicate a group as a new empty-name-collision-free group with the same session membership (sessions are not duplicated, just re-linked). */
+    duplicateGroup(groupId: string): Promise<string | false> {
+        const L = i18n.L;
+        const groups = this.data.groups || {};
+        const source = groups[groupId];
+        if (!source) return Promise.resolve(false);
+
+        let name = `${source.name} copy`;
+        let n = 2;
+        while (this.isGroupNameTaken(name)) {
+            name = `${source.name} copy ${n}`;
+            n++;
+        }
+        const memberIds = this.getGroupSessionIds(groupId);
+
+        return this.createGroup(name).then((newGroupId) => {
+            if (!this.data.sessionGroups) this.data.sessionGroups = {};
+            for (const sessionId of memberIds) {
+                if (!Array.isArray(this.data.sessionGroups[sessionId])) this.data.sessionGroups[sessionId] = [];
+                if (this.data.sessionGroups[sessionId].indexOf(newGroupId) === -1) {
+                    this.data.sessionGroups[sessionId].push(newGroupId);
+                }
+            }
+            this.syncSessionCommands();
+            this.updateStatusBar();
+            this.notify(L.groupDuplicated(name));
+            return this.persistData().then(() => newGroupId);
+        });
+    }
+
     setActiveGroup(groupId: string | null): Promise<boolean> {
         if (!this.isGroupFeatureEnabled()) return Promise.resolve(false);
         const nextGroupId = groupId || null;
@@ -1584,6 +1614,11 @@ export class SessionService {
 
     setRestoreSidebars(enabled: boolean, options?: { persist?: boolean }): Promise<unknown> {
         this.data.restoreSidebars = !!enabled;
+        return this.persistIfNeeded(options);
+    }
+
+    setMacMenuBarEnabled(enabled: boolean, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.macMenuBarEnabled = !!enabled;
         return this.persistIfNeeded(options);
     }
 

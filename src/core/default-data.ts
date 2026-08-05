@@ -17,6 +17,7 @@ export const DEFAULT_DATA: SessionData = {
     restoreSidebars: true,
     statusBarQuickSwitcher: true,
     groupFeatureEnabled: true,
+    macMenuBarEnabled: false,
     showFilterInput: false,
     overlayDefaultFocus: 'current-session',
     showActiveSwitchCommand: false,

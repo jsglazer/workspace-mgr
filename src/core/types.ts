@@ -42,6 +42,7 @@ export interface SessionData {
     highlightUnsavedSessionChanges: boolean;
     restoreSidebars: boolean;
     groupFeatureEnabled: boolean;
+    macMenuBarEnabled: boolean;
 
     previewNext: boolean;
     previewPrevious: boolean;

@@ -8,6 +8,8 @@ import { STATUS_NAME_COLOR_FALLBACK, UNSAVED_COLOR_FALLBACK } from './core/css';
 import type { SessionData } from './core/types';
 import type { SessionService } from './core/session-service';
 import CustomizeClicksModal from './modals/customize-clicks-modal';
+import RenameModal from './modals/rename-modal';
+import ConfirmModal from './modals/confirm-modal';
 
 export interface SettingsHost {
     app: App;
@@ -18,6 +20,7 @@ export interface SettingsHost {
     /** Apply the current unsaved-highlight colour to the document-root custom property. */
     applyUnsavedHighlightColor(): void;
     updateStatusBar(): void;
+    updateMacMenuBar(): void;
     setStatusBarAction(slotKey: string, actionId: string): Promise<unknown>;
 }
 
@@ -168,6 +171,82 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                         this.host.applyUnsavedHighlightColor();
                         this.display();
                     }),
+            );
+
+        // --- Session groups ---
+        new Setting(containerEl).setName(L.settingsSectionGroups).setHeading();
+        new Setting(containerEl)
+            .setName(L.contextToggleGroups)
+            .setDesc(L.settingsSectionGroupsDesc)
+            .addToggle((t) =>
+                t.setValue(this.host.session.isGroupFeatureEnabled()).onChange(async (v) => {
+                    await this.host.session.setGroupFeatureEnabled(v);
+                    this.display();
+                }),
+            );
+
+        if (this.host.session.isGroupFeatureEnabled()) {
+            let newGroupInputEl: HTMLInputElement | null = null;
+            const createGroupFromInput = async (): Promise<void> => {
+                const name = newGroupInputEl ? newGroupInputEl.value : '';
+                const created = await this.host.session.createGroupValidated(name);
+                if (created) this.display();
+            };
+            new Setting(containerEl)
+                .setName(L.settingsGroupCreate)
+                .setDesc(L.settingsGroupCreateDesc)
+                .addText((t) => {
+                    t.setPlaceholder(L.settingsGroupCreatePlaceholder);
+                    newGroupInputEl = t.inputEl;
+                    t.inputEl.addEventListener('keydown', (e) => {
+                        if (e.key !== 'Enter') return;
+                        void createGroupFromInput();
+                    });
+                })
+                .addButton((b) => b.setButtonText(L.settingsGroupCreateBtn).onClick(() => void createGroupFromInput()));
+
+            for (const group of this.host.session.getOrderedGroups()) {
+                new Setting(containerEl)
+                    .setName(group.name)
+                    .addExtraButton((b) =>
+                        b.setIcon('pencil').setTooltip(L.groupContextRename).onClick(() => {
+                            new RenameModal(
+                                this.host.app,
+                                group.name,
+                                async (newName) => {
+                                    await this.host.session.renameGroupValidated(group.id, newName);
+                                    this.display();
+                                },
+                                { title: L.groupContextRename, placeholder: L.groupCreatePlaceholder, buttonText: L.save, emptyNotice: L.groupEmptyName },
+                            ).open();
+                        }),
+                    )
+                    .addExtraButton((b) =>
+                        b.setIcon('copy').setTooltip(L.groupContextDuplicate).onClick(async () => {
+                            await this.host.session.duplicateGroup(group.id);
+                            this.display();
+                        }),
+                    )
+                    .addExtraButton((b) =>
+                        b.setIcon('trash').setTooltip(L.groupContextDelete).onClick(() => {
+                            new ConfirmModal(this.host.app, L.confirmDeleteGroup(group.name), async () => {
+                                await this.host.session.deleteGroup(group.id);
+                                this.display();
+                            }).open();
+                        }),
+                    );
+            }
+        }
+
+        // --- macOS menu bar ---
+        new Setting(containerEl)
+            .setName(L.settingsMenuBarEnabled)
+            .setDesc(L.settingsMenuBarEnabledDesc)
+            .addToggle((t) =>
+                t.setValue(!!data.macMenuBarEnabled).onChange(async (v) => {
+                    await this.host.session.setMacMenuBarEnabled(v);
+                    this.host.updateMacMenuBar();
+                }),
             );
 
         // --- Restore sidebars ---

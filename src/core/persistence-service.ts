@@ -39,7 +39,7 @@ const SESSION_KEYS = [
 const SETTINGS_KEYS = [
     'language', 'previewNext', 'previewPrevious', 'confirmDeleteByHotkey', 'autoSaveOnSwitch',
     'warnOnUnsavedSwitch', 'highlightUnsavedSessionChanges', 'restoreSidebars', 'statusBarQuickSwitcher',
-    'statusBarModScrollSwitch', 'groupFeatureEnabled', 'overlayDefaultFocus', 'searchOverlayPosition',
+    'statusBarModScrollSwitch', 'groupFeatureEnabled', 'macMenuBarEnabled', 'overlayDefaultFocus', 'searchOverlayPosition',
     'searchOverlaySize', 'versionHistoryEnabled', 'versionHistorySnapshotInterval', 'versionHistoryCtrlRmbRestore',
     'versionHistoryConfirmRestore', 'statusBarScrollPreset', 'statusBarScrollModifierMode', 'statusBarScrollThreshold',
     'statusBarScrollCooldownMs', 'statusBarScrollResetMs', 'statusBarScrollInvert', 'statusBarActions',

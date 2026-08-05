@@ -995,15 +995,13 @@ body.wsmgr-session-list-dragging * {
     margin-bottom: 8px;
 }
 
-.wsmgr-manager-groups {
+.wsmgr-manager-groups-toolbar {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    justify-content: flex-end;
     margin-bottom: 8px;
-    flex-wrap: wrap;
 }
 
-.wsmgr-manager-group-tab {
+.wsmgr-manager-group-add {
     padding: 2px 10px;
     border-radius: 999px;
     background: var(--background-modifier-hover);
@@ -1011,15 +1009,54 @@ body.wsmgr-session-list-dragging * {
     cursor: pointer;
 }
 
-.wsmgr-manager-group-tab.is-selected {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
+.wsmgr-manager-group-section {
+    margin-bottom: 4px;
 }
 
-.wsmgr-manager-group-add {
-    padding: 2px 8px;
-    border-radius: 999px;
+.wsmgr-manager-group-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-radius: 6px;
     cursor: pointer;
+}
+
+.wsmgr-manager-group-header:hover {
+    background: var(--background-modifier-hover);
+}
+
+.wsmgr-manager-group-toggle {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.wsmgr-manager-group-name {
+    flex: 1;
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-smaller);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+}
+
+.wsmgr-manager-group-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.wsmgr-manager-group-body {
+    padding-left: 8px;
+}
+
+.wsmgr-manager-group-empty {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    padding: 4px 10px 8px;
+    margin: 0;
 }
 
 .wsmgr-manager-list {

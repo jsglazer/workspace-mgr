@@ -15,7 +15,7 @@ const note = {
 
 const main = {
 
-        modalTitle: 'Manage sessions',
+        modalTitle: 'Manage Workspaces',
         savePlaceholder: 'New session name...',
         filterPlaceholder: 'Filter sessions...',
         managerCounter: function (i, t) { return i + ' / ' + t; },
@@ -74,7 +74,7 @@ const main = {
         delete: 'Delete',
         remove: 'Remove',
         cancel: 'Cancel',
-        ribbonTooltip: 'Workspace++',
+        ribbonTooltip: 'Switch workspace',
         cmdSwitchTo: function (n, name) { return name ? 'Switch to session ' + n + ': ' + name : 'Switch to session ' + n; },
         cmdSwitchToNamed: function (name) { return 'Switch to "' + name + '"'; },
         cmdPrevious: 'Previous session',
@@ -300,6 +300,10 @@ const main = {
         settingsGroupSessionCount: function (n) { return n + ' session' + (n !== 1 ? 's' : ''); },
         settingsGroupDelete: 'Delete group',
         settingsGroupDeleteConfirm: function (n) { return 'Delete group "' + n + '"? Sessions will not be deleted.'; },
+        settingsMenuBarEnabled: 'Show workspace in macOS menu bar',
+        settingsMenuBarEnabledDesc: 'Displays "{Vault} - {Workspace}" in the macOS system menu bar. macOS desktop only — no effect on Windows, Linux, or mobile.',
+        ribbonWorkspacesEmpty: 'No workspaces yet',
+        ribbonUngrouped: 'Ungrouped',
         confirmDeleteGroup: function (n) { return 'Delete group "' + n + '"? Sessions inside this group will NOT be deleted.'; },
         groupAddedSession: function (s, g) { return 'Added "' + s + '" to "' + g + '"'; },
         groupRemovedSession: function (s, g) { return 'Removed "' + s + '" from "' + g + '"'; },
@@ -309,6 +313,8 @@ const main = {
         groupCreatePlaceholder: 'Group name...',
         groupContextRename: 'Rename group',
         groupContextDelete: 'Delete group',
+        groupContextDuplicate: 'Duplicate group',
+        groupDuplicated: function (n) { return 'Duplicated group as "' + n + '"'; },
         contextSwitchSession: 'Switch to this session',
         contextRenameSession: 'Rename this session',
         contextDeleteSession: 'Delete this session',

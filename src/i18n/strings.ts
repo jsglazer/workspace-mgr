@@ -282,6 +282,10 @@ export interface Strings {
     settingsGroupSessionCount: LocaleFn;
     settingsGroupDelete: string;
     settingsGroupDeleteConfirm: LocaleFn;
+    settingsMenuBarEnabled: string;
+    settingsMenuBarEnabledDesc: string;
+    ribbonWorkspacesEmpty: string;
+    ribbonUngrouped: string;
     confirmDeleteGroup: LocaleFn;
     groupAddedSession: LocaleFn;
     groupRemovedSession: LocaleFn;
@@ -291,6 +295,8 @@ export interface Strings {
     groupCreatePlaceholder: string;
     groupContextRename: string;
     groupContextDelete: string;
+    groupContextDuplicate: string;
+    groupDuplicated: LocaleFn;
     contextSwitchSession: string;
     contextRenameSession: string;
     contextDeleteSession: string;

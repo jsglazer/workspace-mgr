@@ -92,4 +92,36 @@ describe('groups', () => {
         expect(counters.commandSyncs).toBe(1);
         expect(counters.persistCalls).toBe(0);
     });
+
+    test('duplicate a group creates a new group with the same session membership', async () => {
+        const { svc } = createService({
+            groups: { g1: { id: 'g1', name: 'One' } },
+            sessions: { s1: { id: 's1', name: 'A' }, s2: { id: 's2', name: 'B' } },
+            sessionGroups: { s1: ['g1'], s2: ['g1'] },
+        });
+        const newGroupId = await svc.duplicateGroup('g1');
+        expect(typeof newGroupId).toBe('string');
+        expect(svc.data.groups[newGroupId as string].name).toBe('One copy');
+        expect(svc.data.sessionGroups.s1.sort()).toEqual(['g1', newGroupId].sort());
+        expect(svc.data.sessionGroups.s2.sort()).toEqual(['g1', newGroupId].sort());
+        // Original group membership is untouched.
+        expect(svc.getGroupSessionIds('g1').sort()).toEqual(['s1', 's2']);
+    });
+
+    test('duplicate a group avoids name collisions', async () => {
+        const { svc } = createService({
+            groups: {
+                g1: { id: 'g1', name: 'One' },
+                g2: { id: 'g2', name: 'One copy' },
+            },
+        });
+        const newGroupId = await svc.duplicateGroup('g1');
+        expect(svc.data.groups[newGroupId as string].name).toBe('One copy 2');
+    });
+
+    test('duplicate a non-existent group is a no-op', async () => {
+        const { svc } = createService();
+        const result = await svc.duplicateGroup('missing');
+        expect(result).toBe(false);
+    });
 });
