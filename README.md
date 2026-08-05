@@ -1,10 +1,6 @@
 # Workspace Manager
 
-Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/)
-community plugin for saving, switching, and organizing workspace sessions. It is
-built for people who want Obsidian layouts to feel fast, native, and
-keyboard-friendly — with **local-first, sync-friendly storage** so sessions
-travel cleanly between devices under Obsidian Sync.
+Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) community plugin for saving, switching, and organizing workspace sessions. It is built for people who want Obsidian layouts to feel fast, native, and keyboard-friendly — with **local-first, sync-friendly storage** so sessions travel cleanly between devices under Obsidian Sync.
 
 > **Derived from [obsidian-workspace-plus](https://github.com/s1m4ne/obsidian-workspace-plus)**
 > by s1m4ne. Workspace Manager is a modern TypeScript rewrite of that plugin with
@@ -20,62 +16,33 @@ travel cleanly between devices under Obsidian Sync.
 
 - Save the current workspace layout as a named session.
 - Switch sessions from the status bar, command palette, hotkeys, or session manager.
-- Manual save workflow with an unsaved-changes warning by default (auto-save-on-switch
-  is available as an opt-in setting).
-- **Session manager modal** — filter, create, switch, rename, and delete sessions with
-  inline icons, an item counter, an ACTIVE badge, group tabs (with a "+" to create new
-  groups), and full keyboard navigation (↑↓ move, Enter switch, Delete remove, Esc close).
-- Organize sessions into groups.
-- Customizable status-bar click / middle-click / right-click actions, each with
-  Alt/Cmd(Ctrl)/Shift modifier variants (12 slots total) — reassign any of them to any
-  action from the plugin's Settings tab or via the right-click "Customize click actions"
-  menu. Clicking the status bar opens the session manager by default; ⌘-click saves the
-  active session; ⌥-click cycles to the next session.
+- Manual save workflow with an unsaved-changes warning by default (auto-save-on-switch is available as an opt-in setting).
+- **Manage Workspaces modal** — filter, create, switch, rename, duplicate, and delete sessions with inline icons, an item counter, an ACTIVE badge, and full keyboard navigation (↑↓ move, Enter switch, Delete remove, Esc close). Sessions are listed under collapsible group sections (chevron toggle, expanded by default) plus an "Ungrouped" section, instead of a group filter bar.
+- **Organize sessions into groups**, with a "+" to create new ones and per-group Rename / Duplicate / Delete actions right in the modal, plus a dedicated Groups section in Settings (enable/disable toggle, create, and manage existing groups).
+- **Left ribbon icon** opens a quick Group → Workspace switch menu (ungrouped sessions first, then each group, both sorted alphabetically) without opening the full Manage Workspaces modal.
+- **macOS menu bar (opt-in, Mac desktop only)** — show `{Vault Name} - {Workspace}` in the system menu bar, kept in sync with the active session/group.
+- Customizable status-bar click / middle-click / right-click actions, each with Alt/Cmd(Ctrl)/Shift modifier variants (12 slots total) — reassign any of them to any action from the plugin's Settings tab or via the right-click "Customize click actions" menu. Clicking the status bar opens the session manager by default; ⌘-click saves the active session; ⌥-click cycles to the next session.
 - Scroll on the status bar to switch sessions.
-- **Set the status-bar session-name colour**, with separate settings colour pickers for
-  light and dark themes.
-- **Set the unsaved-changes highlight colour**, also with separate light/dark pickers
-  (drives both the text colour and a computed background tint).
+- **Set the status-bar session-name colour**, with separate settings colour pickers for light and dark themes.
+- **Set the unsaved-changes highlight colour**, also with separate light/dark pickers (drives both the text colour and a computed background tint).
 - Save, reload, duplicate, rename, delete, reorder, and bulk-delete sessions.
 - Per-session version history with restore.
-- Load sessions from note front-matter with `workspace-session`, and save the
-  current note's name as a session (writing the matching front-matter).
+- Load sessions from note front-matter with `workspace-session`, and save the current note's name as a session (writing the matching front-matter).
 - Available in 21 interface locales.
 
 ## What's different from the original
 
-- **Sync-friendly storage.** Sessions are stored as individual files at
-  `{vault}/.obsidian/plugins/workspace-mgr/sessions/{session_id}.json` with an
-  index at `sessions/index.json`, instead of a single vault-root file. On startup
-  the plugin scans the sessions directory and auto-merges any session files that
-  arrived from another device but are not yet in the index.
-- **Conflict-free merging.** Session contents merge last-writer-wins by modified
-  time; the index is union-merged; sessions are never deleted during a merge. If
-  an incoming synced session is newer *and* its content diverges, it is preserved
-  as a duplicate named `… (Conflict - <timestamp>)` rather than overwriting.
-- **Status-bar colours.** The session-name colour and the unsaved-changes
-  highlight colour are each settings colour pickers with separate light/dark-theme
-  values, applied via CSS custom properties on the document root (no dynamic
-  style injection) and resolved against Obsidian's active theme.
-- **Modern, testable codebase.** Rewritten in TypeScript with a pure,
-  dependency-free decision core (`src/core/`) that imports nothing from Obsidian,
-  covered by a headless Vitest suite (102 tests, including the original plugin's
-  83 behavioral tests ported over).
+- **Sync-friendly storage.** Sessions are stored as individual files at `{vault}/.obsidian/plugins/workspace-mgr/sessions/{session_id}.json` with an index at `sessions/index.json`, instead of a single vault-root file. On startup the plugin scans the sessions directory and auto-merges any session files that arrived from another device but are not yet in the index.
+- **Conflict-free merging.** Session contents merge last-writer-wins by modified time; the index is union-merged; sessions are never deleted during a merge. If an incoming synced session is newer *and* its content diverges, it is preserved as a duplicate named `… (Conflict - <timestamp>)` rather than overwriting.
+- **Status-bar colours.** The session-name colour and the unsaved-changes highlight colour are each settings colour pickers with separate light/dark-theme values, applied via CSS custom properties on the document root (no dynamic style injection) and resolved against Obsidian's active theme.
+- **Modern, testable codebase.** Rewritten in TypeScript with a pure, dependency-free decision core (`src/core/`) that imports nothing from Obsidian, covered by a headless Vitest suite (105 tests, including the original plugin's 83 behavioral tests ported over).
 
 > Sessions start fresh in the new location. Data from the original
 > `workspace-plus-plus` plugin is **not** migrated or read.
 
 ## Usage
 
-Open the command palette and search for *Workspace Manager* to switch sessions,
-save the current layout, create a blank session, open the session manager, or
-restore version history. Bind any of these to hotkeys. The status bar shows the
-active group and session; click it to open the session manager (filter, create,
-switch, rename, delete, and browse sessions by group tab), or right-click it and
-choose "Customize click actions" to reassign what any click / middle-click /
-right-click combination (plain, Alt, Cmd/Ctrl, or Shift) does. The same action
-matrix is also available from **Settings → Workspace Manager → Customize click
-actions**.
+Open the command palette and search for *Workspace Manager* to switch sessions, save the current layout, create a blank session, open **Manage Workspaces**, or restore version history. Bind any of these to hotkeys. The status bar shows the active group and session; click it to open Manage Workspaces (filter, create, switch, rename, duplicate, delete, and browse sessions by collapsible group section), or right-click it and choose "Customize click actions" to reassign what any click / middle-click / right-click combination (plain, Alt, Cmd/Ctrl, or Shift) does. The same action matrix is also available from **Settings → Workspace Manager → Customize click actions**. The left ribbon icon opens a faster Group → Workspace switch menu for jumping straight to a session without opening the full modal.
 
 ## Architecture
 
@@ -83,7 +50,7 @@ actions**.
 |---|---|---|
 | Pure core | `src/core/` | Session/persistence/merge logic. Zero `obsidian` imports; fully unit-tested. |
 | i18n | `src/i18n/` | Per-language modules + loader. |
-| Layout adapter | `src/adapter/` | The only module that touches Obsidian's `getLayout`/`changeLayout`. |
+| Adapters | `src/adapter/` | Confine undocumented internals: workspace `getLayout`/`changeLayout`, and the opt-in macOS menu-bar `Tray` integration. |
 | Shell | `src/` | `main.ts` (Plugin), status bar, settings, front-matter, modals/menus. |
 | Tests | `tests/` | Vitest, headless. |
 
