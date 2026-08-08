@@ -12809,7 +12809,12 @@ function injectItem(Menu4, MenuItem, text) {
       if (item.id !== MENU_ITEM_ID) newMenu.append(item);
     }
   }
-  const ourItem = new MenuItem({ id: MENU_ITEM_ID, label: text, enabled: false });
+  const ourItem = new MenuItem({
+    id: MENU_ITEM_ID,
+    label: text,
+    enabled: true,
+    submenu: [{ label: text, enabled: false }]
+  });
   newMenu.append(ourItem);
   Menu4.setApplicationMenu(newMenu);
   return ourItem;
@@ -12825,11 +12830,8 @@ function createMenuBarAdapter() {
         try {
           const appMenu = Menu4.getApplicationMenu();
           const existing = (_a = appMenu == null ? void 0 : appMenu.items.find((item) => item.id === MENU_ITEM_ID)) != null ? _a : null;
-          if (existing) {
-            existing.label = text;
-          } else {
-            injectItem(Menu4, MenuItem, text);
-          }
+          if (existing && existing.label === text) return;
+          injectItem(Menu4, MenuItem, text);
         } catch (e) {
         }
       },

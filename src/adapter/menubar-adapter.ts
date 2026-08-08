@@ -20,6 +20,15 @@
 // wholesale (e.g. after hotkeys change), which would silently drop our
 // injected item; every setTitle() call re-checks for it and re-injects if
 // missing, so it self-heals rather than needing an explicit rebuild hook.
+//
+// macOS gotcha (verified empirically against Obsidian 1.12.7 via the
+// Accessibility API): a top-level application-menu item with NO submenu is
+// silently never drawn in the menu bar, even though it is present in the Menu
+// object that Menu.getApplicationMenu() returns. The `enabled` flag has no
+// bearing on this — a disabled item with a submenu still renders (greyed),
+// while an enabled item without one does not render at all. So the item MUST
+// carry a submenu to be visible; we give it a one-entry disabled submenu
+// echoing the same text, since this item is a status readout, not a command.
 export interface MenuBarAdapter {
     /** Set the injected menu item's text. */
     setTitle(text: string): void;
@@ -46,7 +55,12 @@ interface ElectronMenuConstructor {
 }
 
 interface ElectronMenuItemConstructor {
-    new (options: { id: string; label: string; enabled: boolean }): ElectronMenuItemLike;
+    new (options: {
+        id: string;
+        label: string;
+        enabled: boolean;
+        submenu: { label: string; enabled: boolean }[];
+    }): ElectronMenuItemLike;
 }
 
 function resolveMenuConstructors(): { Menu: ElectronMenuConstructor; MenuItem: ElectronMenuItemConstructor } | null {
@@ -79,7 +93,13 @@ function injectItem(
             if (item.id !== MENU_ITEM_ID) newMenu.append(item);
         }
     }
-    const ourItem = new MenuItem({ id: MENU_ITEM_ID, label: text, enabled: false });
+    // The submenu is what makes macOS draw the item at all (see header note).
+    const ourItem = new MenuItem({
+        id: MENU_ITEM_ID,
+        label: text,
+        enabled: true,
+        submenu: [{ label: text, enabled: false }],
+    });
     newMenu.append(ourItem);
     Menu.setApplicationMenu(newMenu);
     return ourItem;
@@ -96,11 +116,18 @@ export function createMenuBarAdapter(): MenuBarAdapter | null {
                 try {
                     const appMenu = Menu.getApplicationMenu();
                     const existing = appMenu?.items.find((item) => item.id === MENU_ITEM_ID) ?? null;
-                    if (existing) {
-                        existing.label = text;
-                    } else {
-                        injectItem(Menu, MenuItem, text);
-                    }
+                    // Compare against the live menu's own label rather than caching the
+                    // last value we wrote: Obsidian runs every vault window in ONE
+                    // process, and macOS has ONE application menu per process, so all
+                    // vaults share this menu and overwrite each other's title. A
+                    // per-instance cache would go stale the moment another vault wrote
+                    // its own name, and this window would then skip re-claiming the
+                    // title when it regained focus.
+                    if (existing && existing.label === text) return;
+                    // Rebuild rather than mutate .label: the label lives in two places
+                    // (the item and its submenu entry), and macOS only re-draws the menu
+                    // bar when the application menu is set again.
+                    injectItem(Menu, MenuItem, text);
                 } catch {
                     // Best-effort; a failed title update should never crash the plugin.
                 }
