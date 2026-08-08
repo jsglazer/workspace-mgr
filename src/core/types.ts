@@ -43,6 +43,10 @@ export interface SessionData {
     restoreSidebars: boolean;
     groupFeatureEnabled: boolean;
     macMenuBarEnabled: boolean;
+    /** macOS menu-bar text colour (light theme); empty means the native system colour. */
+    menuBarNameColorLight: string;
+    /** macOS menu-bar text colour (dark theme); empty means the native system colour. */
+    menuBarNameColorDark: string;
     ribbonSyncToFutureSessions: boolean;
     syncedRibbonHiddenItems: Record<string, boolean> | null;
 

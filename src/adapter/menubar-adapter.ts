@@ -29,9 +29,20 @@
 // while an enabled item without one does not render at all. So the item MUST
 // carry a submenu to be visible; we give it a one-entry disabled submenu
 // echoing the same text, since this item is a status readout, not a command.
+// Colour: AppKit exposes no way to colour a menu title through Electron
+// (MenuItem has no colour option, and NSMenuItem.attributedTitle is not
+// surfaced), so a custom colour is achieved by drawing the text into an image
+// and handing that over as the item's `icon`. Verified empirically: when a
+// top-level item carries an icon, macOS draws the icon INSTEAD of the label,
+// and does so in full colour without template-tinting it. The label is still
+// set alongside the icon — it is what macOS falls back to if the image is
+// rejected, and it is what lets setTitle() detect another vault having
+// overwritten the shared menu. A null colour keeps the plain label so the
+// default stays genuinely native (and keeps adapting to the system
+// appearance, which a fixed colour cannot).
 export interface MenuBarAdapter {
-    /** Set the injected menu item's text. */
-    setTitle(text: string): void;
+    /** Set the injected menu item's text, optionally drawn in a custom colour. */
+    setTitle(text: string, color?: string | null): void;
     /** Remove the injected menu item. */
     destroy(): void;
 }
@@ -60,10 +71,73 @@ interface ElectronMenuItemConstructor {
         label: string;
         enabled: boolean;
         submenu: { label: string; enabled: boolean }[];
+        icon?: ElectronNativeImageLike;
     }): ElectronMenuItemLike;
 }
 
-function resolveMenuConstructors(): { Menu: ElectronMenuConstructor; MenuItem: ElectronMenuItemConstructor } | null {
+interface ElectronNativeImageLike {
+    isEmpty(): boolean;
+    addRepresentation(options: { scaleFactor: number; dataURL: string }): void;
+}
+
+interface ElectronNativeImageStatic {
+    createEmpty(): ElectronNativeImageLike;
+}
+
+/**
+ * Draw `text` in `color` as a menu-bar-sized image, or null if it can't be
+ * produced (in which case the caller falls back to a plain system label).
+ *
+ * The bitmap is drawn at the display's pixel ratio and attached as a scaled
+ * representation, so macOS treats it as a Retina asset and it stays sharp
+ * rather than being upscaled from a 1x image. Note this deliberately avoids
+ * nativeImage.createFromBuffer(buf, { scaleFactor }) — measured against
+ * Electron here, that path reports a size divided by scaleFactor SQUARED
+ * (a 200x40 bitmap at scaleFactor 2 comes back as 50x10), which silently
+ * produces a near-invisible sliver of an icon. addRepresentation() sizes it
+ * correctly (200x40 at scaleFactor 2 -> 100x20 points).
+ */
+function renderTextImage(
+    nativeImage: ElectronNativeImageStatic,
+    text: string,
+    color: string,
+): ElectronNativeImageLike | null {
+    const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
+    const FONT_SIZE = 13; // matches the macOS menu-bar type size
+    const HEIGHT = 16;
+    const PAD_X = 3;
+    const font = `${FONT_SIZE * scale}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`;
+
+    const canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.font = font;
+    const width = Math.ceil(ctx.measureText(text).width);
+    if (width <= 0) return null;
+
+    canvas.width = width + PAD_X * 2 * scale;
+    canvas.height = HEIGHT * scale;
+    // Resizing the canvas resets its context, so re-acquire and re-apply state.
+    ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, PAD_X * scale, canvas.height / 2);
+
+    const image = nativeImage.createEmpty();
+    image.addRepresentation({ scaleFactor: scale, dataURL: canvas.toDataURL() });
+    return image.isEmpty() ? null : image;
+}
+
+interface ResolvedElectron {
+    Menu: ElectronMenuConstructor;
+    MenuItem: ElectronMenuItemConstructor;
+    /** Absent only if Electron restructures; colour then degrades to a plain label. */
+    nativeImage: ElectronNativeImageStatic | null;
+}
+
+function resolveMenuConstructors(): ResolvedElectron | null {
     const candidates = ['@electron/remote', 'electron'];
     for (const moduleName of candidates) {
         try {
@@ -72,7 +146,8 @@ function resolveMenuConstructors(): { Menu: ElectronMenuConstructor; MenuItem: E
             const remote = (mod.remote as Record<string, unknown> | undefined) || mod;
             const Menu = remote.Menu as ElectronMenuConstructor | undefined;
             const MenuItem = remote.MenuItem as ElectronMenuItemConstructor | undefined;
-            if (Menu && MenuItem) return { Menu, MenuItem };
+            const nativeImage = (remote.nativeImage as ElectronNativeImageStatic | undefined) ?? null;
+            if (Menu && MenuItem) return { Menu, MenuItem, nativeImage };
         } catch {
             // Module unavailable in this context; try the next candidate.
         }
@@ -82,10 +157,11 @@ function resolveMenuConstructors(): { Menu: ElectronMenuConstructor; MenuItem: E
 
 /** Rebuild the application menu with our item appended (after Help), replacing any prior copy of it. */
 function injectItem(
-    Menu: ElectronMenuConstructor,
-    MenuItem: ElectronMenuItemConstructor,
+    electron: ResolvedElectron,
     text: string,
+    icon: ElectronNativeImageLike | null,
 ): ElectronMenuItemLike | null {
+    const { Menu, MenuItem } = electron;
     const appMenu = Menu.getApplicationMenu();
     const newMenu = new Menu();
     if (appMenu) {
@@ -99,6 +175,7 @@ function injectItem(
         label: text,
         enabled: true,
         submenu: [{ label: text, enabled: false }],
+        ...(icon ? { icon } : {}),
     });
     newMenu.append(ourItem);
     Menu.setApplicationMenu(newMenu);
@@ -109,11 +186,18 @@ export function createMenuBarAdapter(): MenuBarAdapter | null {
     try {
         const resolved = resolveMenuConstructors();
         if (!resolved) return null;
-        const { Menu, MenuItem } = resolved;
+        const { Menu, nativeImage } = resolved;
+
+        // The colour currently drawn into the icon. The live menu can be
+        // inspected for the label but not for the icon's colour, so this one
+        // bit has to be remembered — it is only ever used to force a redraw,
+        // never to skip one, so it cannot cause the staleness described below.
+        let lastColor: string | null = null;
 
         return {
-            setTitle(text: string): void {
+            setTitle(text: string, color?: string | null): void {
                 try {
+                    const wanted = typeof color === 'string' && color.trim() ? color.trim() : null;
                     const appMenu = Menu.getApplicationMenu();
                     const existing = appMenu?.items.find((item) => item.id === MENU_ITEM_ID) ?? null;
                     // Compare against the live menu's own label rather than caching the
@@ -123,17 +207,20 @@ export function createMenuBarAdapter(): MenuBarAdapter | null {
                     // per-instance cache would go stale the moment another vault wrote
                     // its own name, and this window would then skip re-claiming the
                     // title when it regained focus.
-                    if (existing && existing.label === text) return;
+                    if (existing && existing.label === text && lastColor === wanted) return;
                     // Rebuild rather than mutate .label: the label lives in two places
                     // (the item and its submenu entry), and macOS only re-draws the menu
                     // bar when the application menu is set again.
-                    injectItem(Menu, MenuItem, text);
+                    const icon = wanted && nativeImage ? renderTextImage(nativeImage, text, wanted) : null;
+                    injectItem(resolved, text, icon);
+                    lastColor = wanted;
                 } catch {
                     // Best-effort; a failed title update should never crash the plugin.
                 }
             },
             destroy(): void {
                 try {
+                    lastColor = null;
                     const appMenu = Menu.getApplicationMenu();
                     if (!appMenu) return;
                     const filtered = appMenu.items.filter((item) => item.id !== MENU_ITEM_ID);

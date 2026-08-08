@@ -291,8 +291,61 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                 t.setValue(!!data.macMenuBarEnabled).onChange(async (v) => {
                     await this.host.session.setMacMenuBarEnabled(v);
                     this.host.updateMacMenuBar();
+                    this.display();
                 }),
             );
+
+        if (data.macMenuBarEnabled) {
+            new Setting(containerEl)
+                .setName('Menu bar text colour (light theme)')
+                .setDesc(
+                    'Colour of the vault/workspace text in the macOS menu bar under a light theme. ' +
+                        'Leave unset to use the native system colour, which adapts to your wallpaper automatically.',
+                )
+                .addColorPicker((cp) => {
+                    const current = (data.menuBarNameColorLight as string) || '';
+                    if (current) cp.setValue(current);
+                    cp.onChange(async (value) => {
+                        await this.host.session.setMenuBarNameColorLight(value);
+                        this.host.updateMacMenuBar();
+                    });
+                })
+                .addExtraButton((b) =>
+                    b
+                        .setIcon('rotate-ccw')
+                        .setTooltip('Reset to the native system colour')
+                        .onClick(async () => {
+                            await this.host.session.setMenuBarNameColorLight('');
+                            this.host.updateMacMenuBar();
+                            this.display();
+                        }),
+                );
+
+            new Setting(containerEl)
+                .setName('Menu bar text colour (dark theme)')
+                .setDesc(
+                    'Colour of the vault/workspace text in the macOS menu bar under a dark theme. ' +
+                        'Leave unset to use the native system colour, which adapts to your wallpaper automatically.',
+                )
+                .addColorPicker((cp) => {
+                    const current = (data.menuBarNameColorDark as string) || '';
+                    if (current) cp.setValue(current);
+                    cp.onChange(async (value) => {
+                        await this.host.session.setMenuBarNameColorDark(value);
+                        this.host.updateMacMenuBar();
+                    });
+                })
+                .addExtraButton((b) =>
+                    b
+                        .setIcon('rotate-ccw')
+                        .setTooltip('Reset to the native system colour')
+                        .onClick(async () => {
+                            await this.host.session.setMenuBarNameColorDark('');
+                            this.host.updateMacMenuBar();
+                            this.display();
+                        }),
+                );
+        }
 
         // --- Restore sidebars ---
         new Setting(containerEl)

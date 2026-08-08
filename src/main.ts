@@ -9,7 +9,13 @@ import { SessionService } from './core/session-service';
 import { PersistenceService } from './core/persistence-service';
 import { FrontmatterController } from './frontmatter';
 import { DEFAULT_DATA } from './core/default-data';
-import { statusNameColorValue, STATUS_NAME_COLOR_VAR, unsavedHighlightColorValue, UNSAVED_COLOR_VAR } from './core/css';
+import {
+    statusNameColorValue,
+    STATUS_NAME_COLOR_VAR,
+    unsavedHighlightColorValue,
+    UNSAVED_COLOR_VAR,
+    menuBarNameColorValue,
+} from './core/css';
 import { createLayoutAdapter, type LayoutAdapter } from './adapter/layout-adapter';
 import { createMenuBarAdapter, type MenuBarAdapter } from './adapter/menubar-adapter';
 import { renderStatusBar } from './session-statusbar';
@@ -68,6 +74,10 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             this.app.workspace.on('css-change', () => {
                 this.applyStatusNameColor();
                 this.applyUnsavedHighlightColor();
+                // The menu-bar text is a pre-rendered image, so a light/dark
+                // switch has to redraw it — unlike the DOM, it cannot re-read a
+                // CSS variable on its own.
+                this.updateMacMenuBar();
             }),
         );
         this.registerEvent(
@@ -193,7 +203,12 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         if (!this.menuBarAdapter) return;
         const session = this.session.getActiveSession();
         const vaultName = this.app.vault.getName();
-        this.menuBarAdapter.setTitle(session ? `${vaultName} - ${session.name}` : vaultName);
+        const color = menuBarNameColorValue(
+            this.data.menuBarNameColorLight as string,
+            this.data.menuBarNameColorDark as string,
+            this.isDarkTheme(),
+        );
+        this.menuBarAdapter.setTitle(session ? `${vaultName} - ${session.name}` : vaultName, color);
     }
 
     private isDarkTheme(): boolean {

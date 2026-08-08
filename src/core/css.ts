@@ -44,6 +44,23 @@ export function statusNameColorValue(
     return resolveThemedColor(light, dark, isDark, STATUS_NAME_COLOR_FALLBACK);
 }
 
+/**
+ * Resolve the macOS menu-bar text colour. Unlike the two above this does NOT
+ * fall back to a CSS variable: the menu bar is native AppKit, not the DOM, so
+ * there is no theme colour to inherit. An empty value means "leave it to
+ * macOS", which the adapter renders as a plain system-coloured label — so this
+ * returns null rather than a colour string.
+ */
+export function menuBarNameColorValue(
+    light: string | null | undefined,
+    dark: string | null | undefined,
+    isDark: boolean,
+): string | null {
+    const chosen = isDark ? dark : light;
+    const trimmed = typeof chosen === 'string' ? chosen.trim() : '';
+    return trimmed || null;
+}
+
 export function unsavedHighlightColorValue(
     light: string | null | undefined,
     dark: string | null | undefined,

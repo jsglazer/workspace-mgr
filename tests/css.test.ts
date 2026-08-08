@@ -4,6 +4,7 @@ import {
     UNSAVED_COLOR_FALLBACK,
     statusNameColorValue,
     unsavedHighlightColorValue,
+    menuBarNameColorValue,
 } from '../src/core/css';
 
 // Deterministic test (§4): a chosen colour-picker value maps to the expected
@@ -41,5 +42,30 @@ describe('unsaved-highlight colour -> CSS custom property mapping', () => {
     test('falls back to the theme warning colour when empty', () => {
         expect(unsavedHighlightColorValue('', '', false)).toBe(UNSAVED_COLOR_FALLBACK);
         expect(unsavedHighlightColorValue(undefined, undefined, true)).toBe(UNSAVED_COLOR_FALLBACK);
+    });
+});
+
+// The macOS menu bar is native AppKit, not the DOM, so there is no CSS
+// variable to fall back to: "unset" must resolve to null, which the adapter
+// reads as "draw a plain system-coloured label" rather than an image.
+describe('menu-bar colour resolution', () => {
+    test('picks the colour matching the active theme', () => {
+        expect(menuBarNameColorValue('#ff0000', '#00ff00', false)).toBe('#ff0000');
+        expect(menuBarNameColorValue('#ff0000', '#00ff00', true)).toBe('#00ff00');
+    });
+
+    test('trims whitespace around the chosen colour', () => {
+        expect(menuBarNameColorValue('  #abcdef  ', '', false)).toBe('#abcdef');
+    });
+
+    test('returns null when unset, so the native system colour is kept', () => {
+        expect(menuBarNameColorValue('', '', false)).toBeNull();
+        expect(menuBarNameColorValue('   ', '   ', true)).toBeNull();
+        expect(menuBarNameColorValue(null, undefined, false)).toBeNull();
+    });
+
+    test('an unset colour for one theme only affects that theme', () => {
+        expect(menuBarNameColorValue('', '#00ff00', false)).toBeNull();
+        expect(menuBarNameColorValue('', '#00ff00', true)).toBe('#00ff00');
     });
 });

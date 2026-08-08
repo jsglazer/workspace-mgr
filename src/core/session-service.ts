@@ -1780,6 +1780,18 @@ export class SessionService {
         return this.persistIfNeeded(options);
     }
 
+    /** macOS menu-bar text colour (light theme); empty means the native system colour. */
+    setMenuBarNameColorLight(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.menuBarNameColorLight = typeof value === 'string' ? value : '';
+        return this.persistIfNeeded(options);
+    }
+
+    /** macOS menu-bar text colour (dark theme); empty means the native system colour. */
+    setMenuBarNameColorDark(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.menuBarNameColorDark = typeof value === 'string' ? value : '';
+        return this.persistIfNeeded(options);
+    }
+
     /** Unsaved-highlight colour (light theme); drives the CSS custom property. */
     setUnsavedHighlightColorLight(value: string, options?: { persist?: boolean }): Promise<unknown> {
         this.data.unsavedHighlightColorLight = typeof value === 'string' ? value : '';

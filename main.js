@@ -10169,6 +10169,8 @@ var DEFAULT_DATA = {
   statusBarQuickSwitcher: true,
   groupFeatureEnabled: true,
   macMenuBarEnabled: false,
+  menuBarNameColorLight: "",
+  menuBarNameColorDark: "",
   ribbonSyncToFutureSessions: false,
   syncedRibbonHiddenItems: null,
   showFilterInput: false,
@@ -11700,6 +11702,16 @@ var SessionService = class {
     this.data.statusBarNameColorDark = typeof value === "string" ? value : "";
     return this.persistIfNeeded(options);
   }
+  /** macOS menu-bar text colour (light theme); empty means the native system colour. */
+  setMenuBarNameColorLight(value, options) {
+    this.data.menuBarNameColorLight = typeof value === "string" ? value : "";
+    return this.persistIfNeeded(options);
+  }
+  /** macOS menu-bar text colour (dark theme); empty means the native system colour. */
+  setMenuBarNameColorDark(value, options) {
+    this.data.menuBarNameColorDark = typeof value === "string" ? value : "";
+    return this.persistIfNeeded(options);
+  }
   /** Unsaved-highlight colour (light theme); drives the CSS custom property. */
   setUnsavedHighlightColorLight(value, options) {
     this.data.unsavedHighlightColorLight = typeof value === "string" ? value : "";
@@ -12017,7 +12029,9 @@ var SETTINGS_KEYS = [
   "unsavedHighlightColorLight",
   "unsavedHighlightColorDark",
   "ribbonSyncToFutureSessions",
-  "syncedRibbonHiddenItems"
+  "syncedRibbonHiddenItems",
+  "menuBarNameColorLight",
+  "menuBarNameColorDark"
 ];
 function pickKeys(data, keys) {
   const out = {};
@@ -12768,6 +12782,11 @@ function resolveThemedColor(light, dark, isDark, fallback) {
 function statusNameColorValue(light, dark, isDark) {
   return resolveThemedColor(light, dark, isDark, STATUS_NAME_COLOR_FALLBACK);
 }
+function menuBarNameColorValue(light, dark, isDark) {
+  const chosen = isDark ? dark : light;
+  const trimmed = typeof chosen === "string" ? chosen.trim() : "";
+  return trimmed || null;
+}
 function unsavedHighlightColorValue(light, dark, isDark) {
   return resolveThemedColor(light, dark, isDark, UNSAVED_COLOR_FALLBACK);
 }
@@ -12787,7 +12806,32 @@ function createLayoutAdapter(app) {
 
 // src/adapter/menubar-adapter.ts
 var MENU_ITEM_ID = "workspace-mgr-vault-session";
+function renderTextImage(nativeImage, text, color) {
+  const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
+  const FONT_SIZE = 13;
+  const HEIGHT = 16;
+  const PAD_X = 3;
+  const font = `${FONT_SIZE * scale}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`;
+  const canvas = document.createElement("canvas");
+  let ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.font = font;
+  const width = Math.ceil(ctx.measureText(text).width);
+  if (width <= 0) return null;
+  canvas.width = width + PAD_X * 2 * scale;
+  canvas.height = HEIGHT * scale;
+  ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, PAD_X * scale, canvas.height / 2);
+  const image = nativeImage.createEmpty();
+  image.addRepresentation({ scaleFactor: scale, dataURL: canvas.toDataURL() });
+  return image.isEmpty() ? null : image;
+}
 function resolveMenuConstructors() {
+  var _a;
   const candidates = ["@electron/remote", "electron"];
   for (const moduleName of candidates) {
     try {
@@ -12795,13 +12839,15 @@ function resolveMenuConstructors() {
       const remote = mod.remote || mod;
       const Menu4 = remote.Menu;
       const MenuItem = remote.MenuItem;
-      if (Menu4 && MenuItem) return { Menu: Menu4, MenuItem };
+      const nativeImage = (_a = remote.nativeImage) != null ? _a : null;
+      if (Menu4 && MenuItem) return { Menu: Menu4, MenuItem, nativeImage };
     } catch (e) {
     }
   }
   return null;
 }
-function injectItem(Menu4, MenuItem, text) {
+function injectItem(electron, text, icon) {
+  const { Menu: Menu4, MenuItem } = electron;
   const appMenu = Menu4.getApplicationMenu();
   const newMenu = new Menu4();
   if (appMenu) {
@@ -12813,7 +12859,8 @@ function injectItem(Menu4, MenuItem, text) {
     id: MENU_ITEM_ID,
     label: text,
     enabled: true,
-    submenu: [{ label: text, enabled: false }]
+    submenu: [{ label: text, enabled: false }],
+    ...icon ? { icon } : {}
   });
   newMenu.append(ourItem);
   Menu4.setApplicationMenu(newMenu);
@@ -12823,20 +12870,25 @@ function createMenuBarAdapter() {
   try {
     const resolved = resolveMenuConstructors();
     if (!resolved) return null;
-    const { Menu: Menu4, MenuItem } = resolved;
+    const { Menu: Menu4, nativeImage } = resolved;
+    let lastColor = null;
     return {
-      setTitle(text) {
+      setTitle(text, color) {
         var _a;
         try {
+          const wanted = typeof color === "string" && color.trim() ? color.trim() : null;
           const appMenu = Menu4.getApplicationMenu();
           const existing = (_a = appMenu == null ? void 0 : appMenu.items.find((item) => item.id === MENU_ITEM_ID)) != null ? _a : null;
-          if (existing && existing.label === text) return;
-          injectItem(Menu4, MenuItem, text);
+          if (existing && existing.label === text && lastColor === wanted) return;
+          const icon = wanted && nativeImage ? renderTextImage(nativeImage, text, wanted) : null;
+          injectItem(resolved, text, icon);
+          lastColor = wanted;
         } catch (e) {
         }
       },
       destroy() {
         try {
+          lastColor = null;
           const appMenu = Menu4.getApplicationMenu();
           if (!appMenu) return;
           const filtered = appMenu.items.filter((item) => item.id !== MENU_ITEM_ID);
@@ -14323,8 +14375,43 @@ var WorkspaceMgrSettingTab = class extends import_obsidian14.PluginSettingTab {
       (t) => t.setValue(!!data.macMenuBarEnabled).onChange(async (v) => {
         await this.host.session.setMacMenuBarEnabled(v);
         this.host.updateMacMenuBar();
+        this.display();
       })
     );
+    if (data.macMenuBarEnabled) {
+      new import_obsidian14.Setting(containerEl).setName("Menu bar text colour (light theme)").setDesc(
+        "Colour of the vault/workspace text in the macOS menu bar under a light theme. Leave unset to use the native system colour, which adapts to your wallpaper automatically."
+      ).addColorPicker((cp) => {
+        const current = data.menuBarNameColorLight || "";
+        if (current) cp.setValue(current);
+        cp.onChange(async (value) => {
+          await this.host.session.setMenuBarNameColorLight(value);
+          this.host.updateMacMenuBar();
+        });
+      }).addExtraButton(
+        (b) => b.setIcon("rotate-ccw").setTooltip("Reset to the native system colour").onClick(async () => {
+          await this.host.session.setMenuBarNameColorLight("");
+          this.host.updateMacMenuBar();
+          this.display();
+        })
+      );
+      new import_obsidian14.Setting(containerEl).setName("Menu bar text colour (dark theme)").setDesc(
+        "Colour of the vault/workspace text in the macOS menu bar under a dark theme. Leave unset to use the native system colour, which adapts to your wallpaper automatically."
+      ).addColorPicker((cp) => {
+        const current = data.menuBarNameColorDark || "";
+        if (current) cp.setValue(current);
+        cp.onChange(async (value) => {
+          await this.host.session.setMenuBarNameColorDark(value);
+          this.host.updateMacMenuBar();
+        });
+      }).addExtraButton(
+        (b) => b.setIcon("rotate-ccw").setTooltip("Reset to the native system colour").onClick(async () => {
+          await this.host.session.setMenuBarNameColorDark("");
+          this.host.updateMacMenuBar();
+          this.display();
+        })
+      );
+    }
     new import_obsidian14.Setting(containerEl).setName(L2.settingsRestoreSidebars).setDesc(L2.settingsRestoreSidebarsDesc).addToggle(
       (t) => t.setValue(this.host.session.isSidebarRestoreEnabled()).onChange(async (v) => {
         await this.host.session.setRestoreSidebars(v);
@@ -14390,6 +14477,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       this.app.workspace.on("css-change", () => {
         this.applyStatusNameColor();
         this.applyUnsavedHighlightColor();
+        this.updateMacMenuBar();
       })
     );
     this.registerEvent(
@@ -14499,7 +14587,12 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     if (!this.menuBarAdapter) return;
     const session = this.session.getActiveSession();
     const vaultName = this.app.vault.getName();
-    this.menuBarAdapter.setTitle(session ? `${vaultName} - ${session.name}` : vaultName);
+    const color = menuBarNameColorValue(
+      this.data.menuBarNameColorLight,
+      this.data.menuBarNameColorDark,
+      this.isDarkTheme()
+    );
+    this.menuBarAdapter.setTitle(session ? `${vaultName} - ${session.name}` : vaultName, color);
   }
   isDarkTheme() {
     return document.body.classList.contains("theme-dark");

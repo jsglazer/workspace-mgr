@@ -46,6 +46,7 @@ const SETTINGS_KEYS = [
     'confirmQuickActions', 'showFilterInput', 'showActiveSwitchCommand', 'numberedSwitchCommands',
     'statusBarNameColorLight', 'statusBarNameColorDark', 'unsavedHighlightColorLight', 'unsavedHighlightColorDark',
     'ribbonSyncToFutureSessions', 'syncedRibbonHiddenItems',
+    'menuBarNameColorLight', 'menuBarNameColorDark',
 ];
 
 export interface PlatformLike {
