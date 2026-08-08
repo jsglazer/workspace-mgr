@@ -32,6 +32,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     frontmatterCtl!: FrontmatterController;
     layoutAdapter!: LayoutAdapter;
     menuBarAdapter: MenuBarAdapter | null = null;
+    private menuBarRecheckTimers: number[] = [];
     statusBarEl?: HTMLElement;
 
     // Status-bar scroll state (consumed by statusbar-controller).
@@ -96,8 +97,16 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         // window focus event on macOS (unconditionally, ahead of any plugin code), which wipes out
         // our injected menu-bar item. Re-inject right after each focus so it survives.
         this.registerDomEvent(window, 'focus', () => {
-            setTimeout(() => this.updateMacMenuBar(), 0);
+            this.refreshMacMenuBar();
         });
+        // Backstop for resets that follow no event of ours (Obsidian rebuilds its
+        // menu from internal editor state too). Only reaches Electron when the
+        // feature is on, and is a no-op once the item is already correct.
+        this.registerInterval(
+            window.setInterval(() => {
+                if (this.data.macMenuBarEnabled) this.updateMacMenuBar();
+            }, 2000),
+        );
 
         this.session.syncSessionCommands();
         this.registerCommands();
@@ -121,6 +130,8 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.session.stopHistorySnapshotTimer();
         this.persistence.clearSessionStorageSyncTimers();
         this.session.clearSessionSwitchNotice();
+        for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
+        this.menuBarRecheckTimers = [];
         if (this.menuBarAdapter) {
             this.menuBarAdapter.destroy();
             this.menuBarAdapter = null;
@@ -184,12 +195,34 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             getActiveGroup: () => this.session.getActiveGroup(),
             shouldShowUnsavedStatusBarHighlight: () => this.session.shouldShowUnsavedStatusBarHighlight(),
         });
-        this.updateMacMenuBar();
+        this.refreshMacMenuBar();
     }
 
     // ------------------------------------------------------------------
     // macOS menu bar (desktop-only, opt-in; see adapter/menubar-adapter.ts)
     // ------------------------------------------------------------------
+
+    /**
+     * Re-assert the menu-bar item shortly after an event, as well as right now.
+     *
+     * Obsidian's main process re-applies its own cached application menu — which
+     * never contains our injected item — in response to internal state changes
+     * (active leaf, sidebar toggles, editor mode, even heading/selection state,
+     * all funnelled through its `updateMenuItems` IPC). Those resets land
+     * asynchronously AFTER the workspace events we can hook, so re-injecting
+     * only on the event itself loses the race and the item silently vanishes.
+     * There is no event to hook for the reset, so instead re-check a moment
+     * later. `setTitle()` is a no-op when the item is already present and
+     * unchanged, so the extra passes are cheap.
+     */
+    private refreshMacMenuBar(): void {
+        this.updateMacMenuBar();
+        for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
+        this.menuBarRecheckTimers = [120, 500].map((delay) =>
+            window.setTimeout(() => this.updateMacMenuBar(), delay),
+        );
+    }
+
     updateMacMenuBar(): void {
         const shouldShow = !!this.data.macMenuBarEnabled && Platform.isMacOS && Platform.isDesktopApp;
         if (!shouldShow) {
@@ -199,6 +232,11 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             }
             return;
         }
+        // macOS has ONE application menu per process and Obsidian runs every vault
+        // window in that one process, so all vaults share this menu. Only the
+        // focused window may claim it — otherwise background vaults would fight
+        // over the title on every re-check and the name would flip between vaults.
+        if (!document.hasFocus()) return;
         if (!this.menuBarAdapter) this.menuBarAdapter = createMenuBarAdapter();
         if (!this.menuBarAdapter) return;
         const session = this.session.getActiveSession();

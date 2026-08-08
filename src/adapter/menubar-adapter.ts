@@ -173,6 +173,16 @@ function resolveMenuConstructors(): ResolvedElectron | null {
     return null;
 }
 
+/** Find our injected item, searching from the end where it is always appended. */
+function findOurItem(appMenu: ElectronMenuLike | null): ElectronMenuItemLike | null {
+    if (!appMenu) return null;
+    const items = appMenu.items;
+    for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].id === MENU_ITEM_ID) return items[i];
+    }
+    return null;
+}
+
 /** Rebuild the application menu with our item appended (after Help), replacing any prior copy of it. */
 function injectItem(
     electron: ResolvedElectron,
@@ -217,7 +227,11 @@ export function createMenuBarAdapter(): MenuBarAdapter | null {
                 try {
                     const wanted = typeof color === 'string' && color.trim() ? color.trim() : null;
                     const appMenu = Menu.getApplicationMenu();
-                    const existing = appMenu?.items.find((item) => item.id === MENU_ITEM_ID) ?? null;
+                    // Scan from the end: our item is always appended last, and every
+                    // property read here is a synchronous IPC hop into the main
+                    // process. This runs on a short interval, so the usual case
+                    // should cost one read, not one per menu.
+                    const existing = findOurItem(appMenu);
                     // Compare against the live menu's own label rather than caching the
                     // last value we wrote: Obsidian runs every vault window in ONE
                     // process, and macOS has ONE application menu per process, so all

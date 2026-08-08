@@ -12855,6 +12855,14 @@ function resolveMenuConstructors() {
   }
   return null;
 }
+function findOurItem(appMenu) {
+  if (!appMenu) return null;
+  const items = appMenu.items;
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i].id === MENU_ITEM_ID) return items[i];
+  }
+  return null;
+}
 function injectItem(electron, text, icon) {
   const { Menu: Menu4, MenuItem } = electron;
   const appMenu = Menu4.getApplicationMenu();
@@ -12883,11 +12891,10 @@ function createMenuBarAdapter() {
     let lastColor = null;
     return {
       setTitle(text, color) {
-        var _a;
         try {
           const wanted = typeof color === "string" && color.trim() ? color.trim() : null;
           const appMenu = Menu4.getApplicationMenu();
-          const existing = (_a = appMenu == null ? void 0 : appMenu.items.find((item) => item.id === MENU_ITEM_ID)) != null ? _a : null;
+          const existing = findOurItem(appMenu);
           if (existing && existing.label === text && lastColor === wanted) return;
           const icon = wanted && nativeImage ? renderTextImage(nativeImage, text, wanted) : null;
           injectItem(resolved, text, icon);
@@ -14453,6 +14460,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
   constructor() {
     super(...arguments);
     this.menuBarAdapter = null;
+    this.menuBarRecheckTimers = [];
     // Status-bar scroll state (consumed by statusbar-controller).
     this.statusBarScrollDelta = 0;
     this.statusBarScrollEventAt = 0;
@@ -14502,8 +14510,13 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       })
     );
     this.registerDomEvent(window, "focus", () => {
-      setTimeout(() => this.updateMacMenuBar(), 0);
+      this.refreshMacMenuBar();
     });
+    this.registerInterval(
+      window.setInterval(() => {
+        if (this.data.macMenuBarEnabled) this.updateMacMenuBar();
+      }, 2e3)
+    );
     this.session.syncSessionCommands();
     this.registerCommands();
     this.frontmatterCtl.registerFrontmatterListeners();
@@ -14522,6 +14535,8 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     this.session.stopHistorySnapshotTimer();
     this.persistence.clearSessionStorageSyncTimers();
     this.session.clearSessionSwitchNotice();
+    for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
+    this.menuBarRecheckTimers = [];
     if (this.menuBarAdapter) {
       this.menuBarAdapter.destroy();
       this.menuBarAdapter = null;
@@ -14578,11 +14593,31 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       getActiveGroup: () => this.session.getActiveGroup(),
       shouldShowUnsavedStatusBarHighlight: () => this.session.shouldShowUnsavedStatusBarHighlight()
     });
-    this.updateMacMenuBar();
+    this.refreshMacMenuBar();
   }
   // ------------------------------------------------------------------
   // macOS menu bar (desktop-only, opt-in; see adapter/menubar-adapter.ts)
   // ------------------------------------------------------------------
+  /**
+   * Re-assert the menu-bar item shortly after an event, as well as right now.
+   *
+   * Obsidian's main process re-applies its own cached application menu — which
+   * never contains our injected item — in response to internal state changes
+   * (active leaf, sidebar toggles, editor mode, even heading/selection state,
+   * all funnelled through its `updateMenuItems` IPC). Those resets land
+   * asynchronously AFTER the workspace events we can hook, so re-injecting
+   * only on the event itself loses the race and the item silently vanishes.
+   * There is no event to hook for the reset, so instead re-check a moment
+   * later. `setTitle()` is a no-op when the item is already present and
+   * unchanged, so the extra passes are cheap.
+   */
+  refreshMacMenuBar() {
+    this.updateMacMenuBar();
+    for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
+    this.menuBarRecheckTimers = [120, 500].map(
+      (delay) => window.setTimeout(() => this.updateMacMenuBar(), delay)
+    );
+  }
   updateMacMenuBar() {
     const shouldShow = !!this.data.macMenuBarEnabled && import_obsidian15.Platform.isMacOS && import_obsidian15.Platform.isDesktopApp;
     if (!shouldShow) {
@@ -14592,6 +14627,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       }
       return;
     }
+    if (!document.hasFocus()) return;
     if (!this.menuBarAdapter) this.menuBarAdapter = createMenuBarAdapter();
     if (!this.menuBarAdapter) return;
     const session = this.session.getActiveSession();

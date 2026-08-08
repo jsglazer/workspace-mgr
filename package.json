@@ -1,6 +1,6 @@
 {
     "name": "obsidian-workspace-mgr",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "description": "Workspace session manager for Obsidian with local-first, sync-friendly storage. Derived from obsidian-workspace-plus.",
     "main": "main.js",
     "type": "module",
