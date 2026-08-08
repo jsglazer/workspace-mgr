@@ -17,10 +17,11 @@ Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) commu
 - Save the current workspace layout as a named session.
 - Switch sessions from the status bar, command palette, hotkeys, or session manager.
 - Manual save workflow with an unsaved-changes warning by default (auto-save-on-switch is available as an opt-in setting).
-- **Manage Workspaces modal** — filter, create, switch, rename, duplicate, and delete sessions with inline icons, an item counter, an ACTIVE badge, and full keyboard navigation (↑↓ move, Enter switch, Delete remove, Esc close). Sessions are listed under collapsible group sections (chevron toggle, expanded by default) plus an "Ungrouped" section, instead of a group filter bar.
+- **Manage Workspaces modal** — filter, create, switch, rename, duplicate, and delete sessions with inline icons, an item counter, an ACTIVE badge, and full keyboard navigation (↑↓ move, Enter switch, Delete remove, Esc close). Sessions are listed under collapsible group sections (chevron toggle, expanded by default) plus an "Ungrouped" section, instead of a group filter bar — workspace names within each section are sorted alphabetically.
 - **Organize sessions into groups**, with a "+" to create new ones and per-group Rename / Duplicate / Delete actions right in the modal, plus a dedicated Groups section in Settings (enable/disable toggle, create, and manage existing groups). Each session row also has its own "+"/"−" icons to join or leave groups via a checkbox dropdown, so a session can belong to more than one group at once.
 - **Left ribbon icon** opens a quick Group → Workspace switch menu (ungrouped sessions first, then each group, both sorted alphabetically) without opening the full Manage Workspaces modal.
-- **macOS menu bar (opt-in, Mac desktop only)** — show `{Vault Name} - {Workspace}` in the system menu bar, kept in sync with the active session/group.
+- **Sync left ribbon layout** (Settings → Ribbon) — pick a source workspace and replicate which ribbon icons it shows/hides to every other workspace with one click, plus an option to auto-apply that layout to newly created workspaces too. (Obsidian doesn't persist ribbon icon *order* anywhere, so only visibility is synced.)
+- **macOS menu bar (opt-in, Mac desktop only)** — show `{Vault Name} - {Workspace}` as a native menu-bar item next to Help, kept in sync with the active session/group. Since macOS only ever shows the frontmost app's menu bar, running several vaults at once shows only the focused vault's entry — no clutter from background vaults.
 - Customizable status-bar click / middle-click / right-click actions, each with Alt/Cmd(Ctrl)/Shift modifier variants (12 slots total) — reassign any of them to any action from the plugin's Settings tab or via the right-click "Customize click actions" menu. Clicking the status bar opens the session manager by default; ⌘-click saves the active session; ⌥-click cycles to the next session.
 - Scroll on the status bar to switch sessions.
 - **Set the status-bar session-name colour**, with separate settings colour pickers for light and dark themes.
@@ -35,7 +36,7 @@ Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) commu
 - **Sync-friendly storage.** Sessions are stored as individual files at `{vault}/.obsidian/plugins/workspace-mgr/sessions/{session_id}.json` with an index at `sessions/index.json`, instead of a single vault-root file. On startup the plugin scans the sessions directory and auto-merges any session files that arrived from another device but are not yet in the index.
 - **Conflict-free merging.** Session contents merge last-writer-wins by modified time; the index is union-merged; sessions are never deleted during a merge. If an incoming synced session is newer *and* its content diverges, it is preserved as a duplicate named `… (Conflict - <timestamp>)` rather than overwriting.
 - **Status-bar colours.** The session-name colour and the unsaved-changes highlight colour are each settings colour pickers with separate light/dark-theme values, applied via CSS custom properties on the document root (no dynamic style injection) and resolved against Obsidian's active theme.
-- **Modern, testable codebase.** Rewritten in TypeScript with a pure, dependency-free decision core (`src/core/`) that imports nothing from Obsidian, covered by a headless Vitest suite (110 tests, including the original plugin's 83 behavioral tests ported over).
+- **Modern, testable codebase.** Rewritten in TypeScript with a pure, dependency-free decision core (`src/core/`) that imports nothing from Obsidian, covered by a headless Vitest suite (115 tests, including the original plugin's 83 behavioral tests ported over).
 
 > Sessions start fresh in the new location. Data from the original
 > `workspace-plus-plus` plugin is **not** migrated or read.
@@ -50,7 +51,7 @@ Open the command palette and search for *Workspace Manager* to switch sessions, 
 |---|---|---|
 | Pure core | `src/core/` | Session/persistence/merge logic. Zero `obsidian` imports; fully unit-tested. |
 | i18n | `src/i18n/` | Per-language modules + loader. |
-| Adapters | `src/adapter/` | Confine undocumented internals: workspace `getLayout`/`changeLayout`, and the opt-in macOS menu-bar `Tray` integration. |
+| Adapters | `src/adapter/` | Confine undocumented internals: workspace `getLayout`/`changeLayout`, and the opt-in macOS menu-bar `Menu`/`MenuItem` integration. |
 | Shell | `src/` | `main.ts` (Plugin), status bar, settings, front-matter, modals/menus. |
 | Tests | `tests/` | Vitest, headless. |
 
