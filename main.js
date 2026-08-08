@@ -12806,11 +12806,10 @@ function createLayoutAdapter(app) {
 
 // src/adapter/menubar-adapter.ts
 var MENU_ITEM_ID = "workspace-mgr-vault-session";
-function renderTextImage(nativeImage, text, color) {
-  const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
-  const FONT_SIZE = 13;
-  const HEIGHT = 16;
-  const PAD_X = 3;
+var FONT_SIZE = 13;
+var HEIGHT = 18;
+var PAD_X = 4;
+function drawTextDataURL(text, color, scale) {
   const font = `${FONT_SIZE * scale}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`;
   const canvas = document.createElement("canvas");
   let ctx = canvas.getContext("2d");
@@ -12826,9 +12825,19 @@ function renderTextImage(nativeImage, text, color) {
   ctx.fillStyle = color;
   ctx.textBaseline = "middle";
   ctx.fillText(text, PAD_X * scale, canvas.height / 2);
-  const image = nativeImage.createEmpty();
-  image.addRepresentation({ scaleFactor: scale, dataURL: canvas.toDataURL() });
-  return image.isEmpty() ? null : image;
+  return canvas.toDataURL();
+}
+function renderTextImage(nativeImage, text, color) {
+  const base = drawTextDataURL(text, color, 1);
+  if (!base) return null;
+  const image = nativeImage.createFromDataURL(base);
+  if (image.isEmpty()) return null;
+  const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
+  if (scale > 1) {
+    const hiDpi = drawTextDataURL(text, color, scale);
+    if (hiDpi) image.addRepresentation({ scaleFactor: scale, dataURL: hiDpi });
+  }
+  return image;
 }
 function resolveMenuConstructors() {
   var _a;

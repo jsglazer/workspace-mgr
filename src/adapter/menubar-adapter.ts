@@ -81,33 +81,16 @@ interface ElectronNativeImageLike {
 }
 
 interface ElectronNativeImageStatic {
-    createEmpty(): ElectronNativeImageLike;
+    createFromDataURL(dataURL: string): ElectronNativeImageLike;
 }
 
-/**
- * Draw `text` in `color` as a menu-bar-sized image, or null if it can't be
- * produced (in which case the caller falls back to a plain system label).
- *
- * The bitmap is drawn at the display's pixel ratio and attached as a scaled
- * representation, so macOS treats it as a Retina asset and it stays sharp
- * rather than being upscaled from a 1x image. Note this deliberately avoids
- * nativeImage.createFromBuffer(buf, { scaleFactor }) — measured against
- * Electron here, that path reports a size divided by scaleFactor SQUARED
- * (a 200x40 bitmap at scaleFactor 2 comes back as 50x10), which silently
- * produces a near-invisible sliver of an icon. addRepresentation() sizes it
- * correctly (200x40 at scaleFactor 2 -> 100x20 points).
- */
-function renderTextImage(
-    nativeImage: ElectronNativeImageStatic,
-    text: string,
-    color: string,
-): ElectronNativeImageLike | null {
-    const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
-    const FONT_SIZE = 13; // matches the macOS menu-bar type size
-    const HEIGHT = 16;
-    const PAD_X = 3;
-    const font = `${FONT_SIZE * scale}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`;
+const FONT_SIZE = 13; // matches the macOS menu-bar type size
+const HEIGHT = 18;
+const PAD_X = 4;
 
+/** Draw the text at `scale`x and return it as a PNG data URL, or null. */
+function drawTextDataURL(text: string, color: string, scale: number): string | null {
+    const font = `${FONT_SIZE * scale}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif`;
     const canvas = document.createElement('canvas');
     let ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -124,10 +107,45 @@ function renderTextImage(
     ctx.fillStyle = color;
     ctx.textBaseline = 'middle';
     ctx.fillText(text, PAD_X * scale, canvas.height / 2);
+    return canvas.toDataURL();
+}
 
-    const image = nativeImage.createEmpty();
-    image.addRepresentation({ scaleFactor: scale, dataURL: canvas.toDataURL() });
-    return image.isEmpty() ? null : image;
+/**
+ * Draw `text` in `color` as a menu-bar image, or null if it can't be produced
+ * (in which case the caller falls back to a plain system label).
+ *
+ * The 1x bitmap establishes the image's point size — macOS lays the menu item
+ * out at those points, so this is what keeps the text at the same size as the
+ * surrounding menu titles. A 2x bitmap is then layered on as an extra
+ * representation purely for sharpness on Retina; AppKit picks whichever
+ * representation matches the display.
+ *
+ * Both halves of that matter, and getting either wrong is silent:
+ *  - Building the image from ONLY a high-DPI bitmap (e.g. createEmpty() +
+ *    addRepresentation({ scaleFactor: 2 })) yields a wrongly-sized image that
+ *    macOS squashes into an illegible sliver.
+ *  - nativeImage.createFromBuffer(buf, { scaleFactor }) is worse still: it
+ *    sizes the result by scaleFactor SQUARED (a 200x40 bitmap at scaleFactor 2
+ *    comes back as 50x10).
+ * Verified by screenshotting the real menu bar; neither failure is visible
+ * from JS, since the image reports a plausible size either way.
+ */
+function renderTextImage(
+    nativeImage: ElectronNativeImageStatic,
+    text: string,
+    color: string,
+): ElectronNativeImageLike | null {
+    const base = drawTextDataURL(text, color, 1);
+    if (!base) return null;
+    const image = nativeImage.createFromDataURL(base);
+    if (image.isEmpty()) return null;
+
+    const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
+    if (scale > 1) {
+        const hiDpi = drawTextDataURL(text, color, scale);
+        if (hiDpi) image.addRepresentation({ scaleFactor: scale, dataURL: hiDpi });
+    }
+    return image;
 }
 
 interface ResolvedElectron {
