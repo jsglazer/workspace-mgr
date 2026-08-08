@@ -468,7 +468,7 @@ export class SessionService {
 
     createSession(name: string): Promise<unknown> {
         const id = generateId();
-        const layout = this.getCurrentWorkspaceLayout();
+        const layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
         this.insertSessionAndActivate(this.createSessionRecord(id, name, layout));
         this.updateStatusBar();
         this.syncSessionCommands();
@@ -564,7 +564,7 @@ export class SessionService {
         this.app.workspace.iterateRootLeaves?.((leaf) => leaves.push(leaf));
         for (const leaf of leaves) leaf.detach();
 
-        session.layout = this.getCurrentWorkspaceLayout();
+        session.layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
         this.updateStatusBar();
         this.syncSessionCommands();
         this.notify(L.created(name));
@@ -576,7 +576,8 @@ export class SessionService {
         const name = this.getNextSessionName();
         this.captureActiveSessionLayoutIfAutoSave();
         const id = generateId();
-        this.insertSessionAndActivate(this.createSessionRecord(id, name, this.getCurrentWorkspaceLayout()));
+        const layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
+        this.insertSessionAndActivate(this.createSessionRecord(id, name, layout));
         this.updateStatusBar();
         this.syncSessionCommands();
         this.notify(L.duplicated(name));
@@ -590,7 +591,8 @@ export class SessionService {
         if (!source) return Promise.resolve(undefined);
         const name = this.getNextSessionName();
         const newId = generateId();
-        this.data.sessions[newId] = this.createSessionRecord(newId, name, layoutUtils.cloneLayout(source.layout));
+        const layout = this.applyRibbonSyncToNewLayout(layoutUtils.cloneLayout(source.layout));
+        this.data.sessions[newId] = this.createSessionRecord(newId, name, layout);
         this.data.sessionOrder.push(newId);
         const groups = (this.data.sessionGroups || {})[sessionId];
         if (groups && groups.length > 0) {
@@ -600,6 +602,55 @@ export class SessionService {
         this.syncSessionCommands();
         this.notify(L.duplicated(name));
         return this.persistData();
+    }
+
+    // ========================================================================
+    // Ribbon sync — replicate one session's left-ribbon visibility to the rest.
+    // Obsidian only persists *which* ribbon icons are hidden, per saved layout
+    // (layout['left-ribbon'].hiddenItems); icon order is not persisted state
+    // anywhere the plugin can read or write, so only visibility is synced.
+    // ========================================================================
+    getRibbonHiddenItems(sessionId: string): Record<string, boolean> | null {
+        const session = this.data.sessions[sessionId];
+        const ribbon = session?.layout?.['left-ribbon'] as { hiddenItems?: Record<string, boolean> } | undefined;
+        return ribbon && ribbon.hiddenItems ? { ...ribbon.hiddenItems } : null;
+    }
+
+    /**
+     * Replicate `sourceSessionId`'s ribbon visibility onto every other
+     * existing session, and remember it as the canonical snapshot new
+     * sessions pick up when `ribbonSyncToFutureSessions` is enabled.
+     */
+    syncRibbonFromSession(sourceSessionId: string): Promise<boolean> {
+        const hiddenItems = this.getRibbonHiddenItems(sourceSessionId);
+        if (!hiddenItems) return Promise.resolve(false);
+
+        for (const id of Object.keys(this.data.sessions)) {
+            if (id === sourceSessionId) continue;
+            const session = this.data.sessions[id];
+            const layout: Layout = session.layout ? layoutUtils.cloneLayout(session.layout) : {};
+            layout['left-ribbon'] = { hiddenItems: { ...hiddenItems } };
+            session.layout = layout;
+            session.modified = Date.now();
+        }
+
+        this.data.syncedRibbonHiddenItems = { ...hiddenItems };
+        return this.persistData().then(() => true);
+    }
+
+    setRibbonSyncToFutureSessions(enabled: boolean): Promise<boolean> {
+        this.data.ribbonSyncToFutureSessions = enabled;
+        return this.persistData().then(() => true);
+    }
+
+    /** Stamp the canonical synced ribbon state onto a brand-new session's layout, if enabled. */
+    private applyRibbonSyncToNewLayout(layout: Layout): Layout;
+    private applyRibbonSyncToNewLayout(layout: Layout | null | undefined): Layout | null | undefined;
+    private applyRibbonSyncToNewLayout(layout: Layout | null | undefined): Layout | null | undefined {
+        if (!this.data.ribbonSyncToFutureSessions || !this.data.syncedRibbonHiddenItems) return layout;
+        const next: Layout = layout ? layoutUtils.cloneLayout(layout) : {};
+        next['left-ribbon'] = { hiddenItems: { ...this.data.syncedRibbonHiddenItems } };
+        return next;
     }
 
     ensureDefaultSession(): void {

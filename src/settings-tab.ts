@@ -2,7 +2,7 @@
 // colour pickers (each applied via a CSS custom property on the document
 // root — no dynamic <style> injection) plus the core session/history
 // toggles. A focused subset of the reference plugin's large settings surface.
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import * as i18n from './i18n';
 import { STATUS_NAME_COLOR_FALLBACK, UNSAVED_COLOR_FALLBACK } from './core/css';
 import type { SessionData } from './core/types';
@@ -236,6 +236,51 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                         }),
                     );
             }
+        }
+
+        // --- Ribbon sync ---
+        new Setting(containerEl).setName('Ribbon').setHeading();
+        {
+            const allSessions = this.host.session.getOrderedSessionsUnfiltered();
+            let ribbonSourceId = allSessions.some((s) => s.id === data.activeSessionId)
+                ? (data.activeSessionId as string)
+                : allSessions[0]?.id || '';
+            new Setting(containerEl)
+                .setName('Sync left ribbon')
+                .setDesc(
+                    "Replicate the selected workspace's left-ribbon icon visibility to every other workspace. " +
+                        "Obsidian doesn't store icon order, so only which icons are shown or hidden is synced.",
+                )
+                .addDropdown((d) => {
+                    for (const s of allSessions) d.addOption(s.id, s.name);
+                    if (ribbonSourceId) d.setValue(ribbonSourceId);
+                    d.onChange((v) => {
+                        ribbonSourceId = v;
+                    });
+                })
+                .addButton((b) =>
+                    b
+                        .setButtonText('Sync now')
+                        .setCta()
+                        .onClick(async () => {
+                            if (!ribbonSourceId) return;
+                            const ok = await this.host.session.syncRibbonFromSession(ribbonSourceId);
+                            new Notice(
+                                ok
+                                    ? 'Ribbon layout synced to all workspaces.'
+                                    : 'That workspace has no saved ribbon layout yet — switch to it once, then try again.',
+                            );
+                        }),
+                );
+
+            new Setting(containerEl)
+                .setName('Also sync new workspaces automatically')
+                .setDesc('Apply the same ribbon visibility whenever a new workspace is created.')
+                .addToggle((t) =>
+                    t.setValue(!!data.ribbonSyncToFutureSessions).onChange(async (v) => {
+                        await this.host.session.setRibbonSyncToFutureSessions(v);
+                    }),
+                );
         }
 
         // --- macOS menu bar ---

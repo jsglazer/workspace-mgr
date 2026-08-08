@@ -43,6 +43,8 @@ export interface SessionData {
     restoreSidebars: boolean;
     groupFeatureEnabled: boolean;
     macMenuBarEnabled: boolean;
+    ribbonSyncToFutureSessions: boolean;
+    syncedRibbonHiddenItems: Record<string, boolean> | null;
 
     previewNext: boolean;
     previewPrevious: boolean;

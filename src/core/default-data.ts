@@ -18,6 +18,8 @@ export const DEFAULT_DATA: SessionData = {
     statusBarQuickSwitcher: true,
     groupFeatureEnabled: true,
     macMenuBarEnabled: false,
+    ribbonSyncToFutureSessions: false,
+    syncedRibbonHiddenItems: null,
     showFilterInput: false,
     overlayDefaultFocus: 'current-session',
     showActiveSwitchCommand: false,

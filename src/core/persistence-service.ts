@@ -45,6 +45,7 @@ const SETTINGS_KEYS = [
     'statusBarScrollCooldownMs', 'statusBarScrollResetMs', 'statusBarScrollInvert', 'statusBarActions',
     'confirmQuickActions', 'showFilterInput', 'showActiveSwitchCommand', 'numberedSwitchCommands',
     'statusBarNameColorLight', 'statusBarNameColorDark', 'unsavedHighlightColorLight', 'unsavedHighlightColorDark',
+    'ribbonSyncToFutureSessions', 'syncedRibbonHiddenItems',
 ];
 
 export interface PlatformLike {

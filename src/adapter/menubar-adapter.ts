@@ -1,34 +1,64 @@
 // Thin adapter isolating the optional macOS menu-bar text feature. There is no
-// public Obsidian plugin API for the system menu bar; this reaches Electron's
-// Tray API directly (require('electron') is reachable because Obsidian bundles
-// Electron with Node integration for plugins), the same "undocumented internal"
-// category the layout adapter confines for the workspace-layout APIs. Every
-// entry point is wrapped in try/catch: if Electron access is ever blocked or
-// restructured, this feature silently disables itself instead of breaking the
-// plugin. Desktop macOS only — callers must gate on Platform.isMacOS &&
-// Platform.isDesktopApp before constructing this adapter.
+// public Obsidian plugin API for the native application menu; this reaches
+// Electron's Menu/MenuItem API directly (require('electron') is reachable
+// because Obsidian bundles Electron with Node integration for plugins), the
+// same "undocumented internal" category the layout adapter confines for the
+// workspace-layout APIs. Every entry point is wrapped in try/catch: if
+// Electron access is ever blocked or restructured, this feature silently
+// disables itself instead of breaking the plugin. Desktop macOS only —
+// callers must gate on Platform.isMacOS && Platform.isDesktopApp before
+// constructing this adapter.
+//
+// Design: rather than a system Tray icon (always visible regardless of which
+// window is focused, which is why running several vaults at once used to
+// show several stale "Vault - Workspace" entries at once), the text is
+// injected as a plain (disabled) item appended to the end of the native
+// application menu, right after Help. macOS only ever displays the
+// frontmost process's application menu, so this gets "only one shown at a
+// time, matching the focused vault" for free — no window focus/blur
+// tracking needed. Obsidian occasionally rebuilds its own application menu
+// wholesale (e.g. after hotkeys change), which would silently drop our
+// injected item; every setTitle() call re-checks for it and re-injects if
+// missing, so it self-heals rather than needing an explicit rebuild hook.
 export interface MenuBarAdapter {
-    /** Set the menu-bar text next to the tray icon. */
+    /** Set the injected menu item's text. */
     setTitle(text: string): void;
-    /** Remove the tray icon. */
+    /** Remove the injected menu item. */
     destroy(): void;
 }
 
-interface ElectronTrayLike {
-    setTitle(title: string): void;
-    destroy(): void;
+const MENU_ITEM_ID = 'workspace-mgr-vault-session';
+
+interface ElectronMenuItemLike {
+    id?: string;
+    label: string;
 }
 
-function resolveTrayConstructor(): { Tray: new (icon: unknown) => ElectronTrayLike; nativeImage: { createEmpty(): unknown } } | null {
+interface ElectronMenuLike {
+    items: ElectronMenuItemLike[];
+    append(item: ElectronMenuItemLike): void;
+}
+
+interface ElectronMenuConstructor {
+    new (): ElectronMenuLike;
+    getApplicationMenu(): ElectronMenuLike | null;
+    setApplicationMenu(menu: ElectronMenuLike | null): void;
+}
+
+interface ElectronMenuItemConstructor {
+    new (options: { id: string; label: string; enabled: boolean }): ElectronMenuItemLike;
+}
+
+function resolveMenuConstructors(): { Menu: ElectronMenuConstructor; MenuItem: ElectronMenuItemConstructor } | null {
     const candidates = ['@electron/remote', 'electron'];
     for (const moduleName of candidates) {
         try {
             // eslint-disable-next-line @typescript-eslint/no-var-requires
             const mod = require(moduleName) as Record<string, unknown>;
             const remote = (mod.remote as Record<string, unknown> | undefined) || mod;
-            const Tray = remote.Tray as (new (icon: unknown) => ElectronTrayLike) | undefined;
-            const nativeImage = remote.nativeImage as { createEmpty(): unknown } | undefined;
-            if (Tray && nativeImage) return { Tray, nativeImage };
+            const Menu = remote.Menu as ElectronMenuConstructor | undefined;
+            const MenuItem = remote.MenuItem as ElectronMenuItemConstructor | undefined;
+            if (Menu && MenuItem) return { Menu, MenuItem };
         } catch {
             // Module unavailable in this context; try the next candidate.
         }
@@ -36,23 +66,54 @@ function resolveTrayConstructor(): { Tray: new (icon: unknown) => ElectronTrayLi
     return null;
 }
 
+/** Rebuild the application menu with our item appended (after Help), replacing any prior copy of it. */
+function injectItem(
+    Menu: ElectronMenuConstructor,
+    MenuItem: ElectronMenuItemConstructor,
+    text: string,
+): ElectronMenuItemLike | null {
+    const appMenu = Menu.getApplicationMenu();
+    const newMenu = new Menu();
+    if (appMenu) {
+        for (const item of appMenu.items) {
+            if (item.id !== MENU_ITEM_ID) newMenu.append(item);
+        }
+    }
+    const ourItem = new MenuItem({ id: MENU_ITEM_ID, label: text, enabled: false });
+    newMenu.append(ourItem);
+    Menu.setApplicationMenu(newMenu);
+    return ourItem;
+}
+
 export function createMenuBarAdapter(): MenuBarAdapter | null {
     try {
-        const resolved = resolveTrayConstructor();
+        const resolved = resolveMenuConstructors();
         if (!resolved) return null;
-        const icon = resolved.nativeImage.createEmpty();
-        const tray = new resolved.Tray(icon);
+        const { Menu, MenuItem } = resolved;
+
         return {
             setTitle(text: string): void {
                 try {
-                    tray.setTitle(text);
+                    const appMenu = Menu.getApplicationMenu();
+                    const existing = appMenu?.items.find((item) => item.id === MENU_ITEM_ID) ?? null;
+                    if (existing) {
+                        existing.label = text;
+                    } else {
+                        injectItem(Menu, MenuItem, text);
+                    }
                 } catch {
                     // Best-effort; a failed title update should never crash the plugin.
                 }
             },
             destroy(): void {
                 try {
-                    tray.destroy();
+                    const appMenu = Menu.getApplicationMenu();
+                    if (!appMenu) return;
+                    const filtered = appMenu.items.filter((item) => item.id !== MENU_ITEM_ID);
+                    if (filtered.length === appMenu.items.length) return;
+                    const newMenu = new Menu();
+                    for (const item of filtered) newMenu.append(item);
+                    Menu.setApplicationMenu(newMenu);
                 } catch {
                     // Already gone; nothing to clean up.
                 }

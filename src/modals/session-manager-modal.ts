@@ -253,6 +253,10 @@ export default class SessionManagerModal extends Modal {
         return !this.filter || session.name.toLowerCase().includes(this.filter);
     }
 
+    private sortByName(sessions: Session[]): Session[] {
+        return sessions.slice().sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     private getUngroupedSessions(): Session[] {
         const sessionGroups = this.plugin.data.sessionGroups || {};
         return this.plugin.getOrderedSessions().filter((s) => {
@@ -426,11 +430,11 @@ export default class SessionManagerModal extends Modal {
         this.rowEls = [];
 
         if (!this.plugin.isGroupFeatureEnabled()) {
-            const sessions = this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s));
+            const sessions = this.sortByName(this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s)));
             for (const session of sessions) this.renderSessionRow(this.listEl, session);
             if (sessions.length === 0) this.listEl.createEl('p', { text: L.noSession });
         } else {
-            const ungrouped = this.getUngroupedSessions().filter((s) => this.matchesFilter(s));
+            const ungrouped = this.sortByName(this.getUngroupedSessions().filter((s) => this.matchesFilter(s)));
             if (ungrouped.length > 0) {
                 const section = this.listEl.createDiv({ cls: 'wsmgr-manager-group-section' });
                 this.renderGroupHeader(section, UNGROUPED_KEY, L.ribbonUngrouped);
@@ -445,7 +449,9 @@ export default class SessionManagerModal extends Modal {
                 this.renderGroupHeader(section, group.id, group.name, { group });
                 if (!this.collapsed.has(group.id)) {
                     const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
-                    const groupSessions = this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s));
+                    const groupSessions = this.sortByName(
+                        this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s)),
+                    );
                     if (groupSessions.length === 0) {
                         body.createEl('p', { cls: 'wsmgr-manager-group-empty', text: L.noGroupSessions });
                     } else {

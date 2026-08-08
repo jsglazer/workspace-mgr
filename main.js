@@ -10169,6 +10169,8 @@ var DEFAULT_DATA = {
   statusBarQuickSwitcher: true,
   groupFeatureEnabled: true,
   macMenuBarEnabled: false,
+  ribbonSyncToFutureSessions: false,
+  syncedRibbonHiddenItems: null,
   showFilterInput: false,
   overlayDefaultFocus: "current-session",
   showActiveSwitchCommand: false,
@@ -10579,7 +10581,7 @@ var SessionService = class {
   }
   createSession(name) {
     const id2 = generateId();
-    const layout = this.getCurrentWorkspaceLayout();
+    const layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
     this.insertSessionAndActivate(this.createSessionRecord(id2, name, layout));
     this.updateStatusBar();
     this.syncSessionCommands();
@@ -10661,7 +10663,7 @@ var SessionService = class {
     const leaves = [];
     (_b = (_a = this.app.workspace).iterateRootLeaves) == null ? void 0 : _b.call(_a, (leaf) => leaves.push(leaf));
     for (const leaf of leaves) leaf.detach();
-    session.layout = this.getCurrentWorkspaceLayout();
+    session.layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
     this.updateStatusBar();
     this.syncSessionCommands();
     this.notify(L2.created(name));
@@ -10672,7 +10674,8 @@ var SessionService = class {
     const name = this.getNextSessionName();
     this.captureActiveSessionLayoutIfAutoSave();
     const id2 = generateId();
-    this.insertSessionAndActivate(this.createSessionRecord(id2, name, this.getCurrentWorkspaceLayout()));
+    const layout = this.applyRibbonSyncToNewLayout(this.getCurrentWorkspaceLayout());
+    this.insertSessionAndActivate(this.createSessionRecord(id2, name, layout));
     this.updateStatusBar();
     this.syncSessionCommands();
     this.notify(L2.duplicated(name));
@@ -10685,7 +10688,8 @@ var SessionService = class {
     if (!source) return Promise.resolve(void 0);
     const name = this.getNextSessionName();
     const newId = generateId();
-    this.data.sessions[newId] = this.createSessionRecord(newId, name, cloneLayout(source.layout));
+    const layout = this.applyRibbonSyncToNewLayout(cloneLayout(source.layout));
+    this.data.sessions[newId] = this.createSessionRecord(newId, name, layout);
     this.data.sessionOrder.push(newId);
     const groups = (this.data.sessionGroups || {})[sessionId];
     if (groups && groups.length > 0) {
@@ -10695,6 +10699,47 @@ var SessionService = class {
     this.syncSessionCommands();
     this.notify(L2.duplicated(name));
     return this.persistData();
+  }
+  // ========================================================================
+  // Ribbon sync — replicate one session's left-ribbon visibility to the rest.
+  // Obsidian only persists *which* ribbon icons are hidden, per saved layout
+  // (layout['left-ribbon'].hiddenItems); icon order is not persisted state
+  // anywhere the plugin can read or write, so only visibility is synced.
+  // ========================================================================
+  getRibbonHiddenItems(sessionId) {
+    var _a;
+    const session = this.data.sessions[sessionId];
+    const ribbon = (_a = session == null ? void 0 : session.layout) == null ? void 0 : _a["left-ribbon"];
+    return ribbon && ribbon.hiddenItems ? { ...ribbon.hiddenItems } : null;
+  }
+  /**
+   * Replicate `sourceSessionId`'s ribbon visibility onto every other
+   * existing session, and remember it as the canonical snapshot new
+   * sessions pick up when `ribbonSyncToFutureSessions` is enabled.
+   */
+  syncRibbonFromSession(sourceSessionId) {
+    const hiddenItems = this.getRibbonHiddenItems(sourceSessionId);
+    if (!hiddenItems) return Promise.resolve(false);
+    for (const id2 of Object.keys(this.data.sessions)) {
+      if (id2 === sourceSessionId) continue;
+      const session = this.data.sessions[id2];
+      const layout = session.layout ? cloneLayout(session.layout) : {};
+      layout["left-ribbon"] = { hiddenItems: { ...hiddenItems } };
+      session.layout = layout;
+      session.modified = Date.now();
+    }
+    this.data.syncedRibbonHiddenItems = { ...hiddenItems };
+    return this.persistData().then(() => true);
+  }
+  setRibbonSyncToFutureSessions(enabled) {
+    this.data.ribbonSyncToFutureSessions = enabled;
+    return this.persistData().then(() => true);
+  }
+  applyRibbonSyncToNewLayout(layout) {
+    if (!this.data.ribbonSyncToFutureSessions || !this.data.syncedRibbonHiddenItems) return layout;
+    const next = layout ? cloneLayout(layout) : {};
+    next["left-ribbon"] = { hiddenItems: { ...this.data.syncedRibbonHiddenItems } };
+    return next;
   }
   ensureDefaultSession() {
     const hasDefault = Object.values(this.data.sessions).some((s) => s.isDefault);
@@ -11970,7 +12015,9 @@ var SETTINGS_KEYS = [
   "statusBarNameColorLight",
   "statusBarNameColorDark",
   "unsavedHighlightColorLight",
-  "unsavedHighlightColorDark"
+  "unsavedHighlightColorDark",
+  "ribbonSyncToFutureSessions",
+  "syncedRibbonHiddenItems"
 ];
 function pickKeys(data, keys) {
   const out = {};
@@ -12739,36 +12786,62 @@ function createLayoutAdapter(app) {
 }
 
 // src/adapter/menubar-adapter.ts
-function resolveTrayConstructor() {
+var MENU_ITEM_ID = "workspace-mgr-vault-session";
+function resolveMenuConstructors() {
   const candidates = ["@electron/remote", "electron"];
   for (const moduleName of candidates) {
     try {
       const mod = require(moduleName);
       const remote = mod.remote || mod;
-      const Tray = remote.Tray;
-      const nativeImage = remote.nativeImage;
-      if (Tray && nativeImage) return { Tray, nativeImage };
+      const Menu4 = remote.Menu;
+      const MenuItem = remote.MenuItem;
+      if (Menu4 && MenuItem) return { Menu: Menu4, MenuItem };
     } catch (e) {
     }
   }
   return null;
 }
+function injectItem(Menu4, MenuItem, text) {
+  const appMenu = Menu4.getApplicationMenu();
+  const newMenu = new Menu4();
+  if (appMenu) {
+    for (const item of appMenu.items) {
+      if (item.id !== MENU_ITEM_ID) newMenu.append(item);
+    }
+  }
+  const ourItem = new MenuItem({ id: MENU_ITEM_ID, label: text, enabled: false });
+  newMenu.append(ourItem);
+  Menu4.setApplicationMenu(newMenu);
+  return ourItem;
+}
 function createMenuBarAdapter() {
   try {
-    const resolved = resolveTrayConstructor();
+    const resolved = resolveMenuConstructors();
     if (!resolved) return null;
-    const icon = resolved.nativeImage.createEmpty();
-    const tray = new resolved.Tray(icon);
+    const { Menu: Menu4, MenuItem } = resolved;
     return {
       setTitle(text) {
+        var _a;
         try {
-          tray.setTitle(text);
+          const appMenu = Menu4.getApplicationMenu();
+          const existing = (_a = appMenu == null ? void 0 : appMenu.items.find((item) => item.id === MENU_ITEM_ID)) != null ? _a : null;
+          if (existing) {
+            existing.label = text;
+          } else {
+            injectItem(Menu4, MenuItem, text);
+          }
         } catch (e) {
         }
       },
       destroy() {
         try {
-          tray.destroy();
+          const appMenu = Menu4.getApplicationMenu();
+          if (!appMenu) return;
+          const filtered = appMenu.items.filter((item) => item.id !== MENU_ITEM_ID);
+          if (filtered.length === appMenu.items.length) return;
+          const newMenu = new Menu4();
+          for (const item of filtered) newMenu.append(item);
+          Menu4.setApplicationMenu(newMenu);
         } catch (e) {
         }
       }
@@ -13513,6 +13586,9 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
   matchesFilter(session) {
     return !this.filter || session.name.toLowerCase().includes(this.filter);
   }
+  sortByName(sessions) {
+    return sessions.slice().sort((a, b) => a.name.localeCompare(b.name));
+  }
   getUngroupedSessions() {
     const sessionGroups = this.plugin.data.sessionGroups || {};
     return this.plugin.getOrderedSessions().filter((s) => {
@@ -13665,11 +13741,11 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
     this.sessions = [];
     this.rowEls = [];
     if (!this.plugin.isGroupFeatureEnabled()) {
-      const sessions = this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s));
+      const sessions = this.sortByName(this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s)));
       for (const session of sessions) this.renderSessionRow(this.listEl, session);
       if (sessions.length === 0) this.listEl.createEl("p", { text: L2.noSession });
     } else {
-      const ungrouped = this.getUngroupedSessions().filter((s) => this.matchesFilter(s));
+      const ungrouped = this.sortByName(this.getUngroupedSessions().filter((s) => this.matchesFilter(s)));
       if (ungrouped.length > 0) {
         const section = this.listEl.createDiv({ cls: "wsmgr-manager-group-section" });
         this.renderGroupHeader(section, UNGROUPED_KEY, L2.ribbonUngrouped);
@@ -13683,7 +13759,9 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
         this.renderGroupHeader(section, group.id, group.name, { group });
         if (!this.collapsed.has(group.id)) {
           const body = section.createDiv({ cls: "wsmgr-manager-group-body" });
-          const groupSessions = this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s));
+          const groupSessions = this.sortByName(
+            this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s))
+          );
           if (groupSessions.length === 0) {
             body.createEl("p", { cls: "wsmgr-manager-group-empty", text: L2.noGroupSessions });
           } else {
@@ -14077,6 +14155,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian14.PluginSettingTab {
     this.host = plugin;
   }
   display() {
+    var _a;
     const L2 = L;
     const { containerEl } = this;
     containerEl.empty();
@@ -14210,6 +14289,33 @@ var WorkspaceMgrSettingTab = class extends import_obsidian14.PluginSettingTab {
           })
         );
       }
+    }
+    new import_obsidian14.Setting(containerEl).setName("Ribbon").setHeading();
+    {
+      const allSessions = this.host.session.getOrderedSessionsUnfiltered();
+      let ribbonSourceId = allSessions.some((s) => s.id === data.activeSessionId) ? data.activeSessionId : ((_a = allSessions[0]) == null ? void 0 : _a.id) || "";
+      new import_obsidian14.Setting(containerEl).setName("Sync left ribbon").setDesc(
+        "Replicate the selected workspace's left-ribbon icon visibility to every other workspace. Obsidian doesn't store icon order, so only which icons are shown or hidden is synced."
+      ).addDropdown((d) => {
+        for (const s of allSessions) d.addOption(s.id, s.name);
+        if (ribbonSourceId) d.setValue(ribbonSourceId);
+        d.onChange((v) => {
+          ribbonSourceId = v;
+        });
+      }).addButton(
+        (b) => b.setButtonText("Sync now").setCta().onClick(async () => {
+          if (!ribbonSourceId) return;
+          const ok = await this.host.session.syncRibbonFromSession(ribbonSourceId);
+          new import_obsidian14.Notice(
+            ok ? "Ribbon layout synced to all workspaces." : "That workspace has no saved ribbon layout yet \u2014 switch to it once, then try again."
+          );
+        })
+      );
+      new import_obsidian14.Setting(containerEl).setName("Also sync new workspaces automatically").setDesc("Apply the same ribbon visibility whenever a new workspace is created.").addToggle(
+        (t) => t.setValue(!!data.ribbonSyncToFutureSessions).onChange(async (v) => {
+          await this.host.session.setRibbonSyncToFutureSessions(v);
+        })
+      );
     }
     new import_obsidian14.Setting(containerEl).setName(L2.settingsMenuBarEnabled).setDesc(L2.settingsMenuBarEnabledDesc).addToggle(
       (t) => t.setValue(!!data.macMenuBarEnabled).onChange(async (v) => {
