@@ -14402,6 +14402,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
         setTimeout(() => this.updateStatusBar(), 0);
       })
     );
+    this.registerDomEvent(window, "focus", () => {
+      setTimeout(() => this.updateMacMenuBar(), 0);
+    });
     this.session.syncSessionCommands();
     this.registerCommands();
     this.frontmatterCtl.registerFrontmatterListeners();

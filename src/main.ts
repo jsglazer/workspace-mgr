@@ -82,6 +82,12 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
                 setTimeout(() => this.updateStatusBar(), 0);
             }),
         );
+        // Obsidian's own main process re-applies a per-window native application menu on every
+        // window focus event on macOS (unconditionally, ahead of any plugin code), which wipes out
+        // our injected menu-bar item. Re-inject right after each focus so it survives.
+        this.registerDomEvent(window, 'focus', () => {
+            setTimeout(() => this.updateMacMenuBar(), 0);
+        });
 
         this.session.syncSessionCommands();
         this.registerCommands();
