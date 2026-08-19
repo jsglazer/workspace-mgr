@@ -8,7 +8,6 @@ import * as i18n from './i18n';
 import { SessionService } from './core/session-service';
 import { PersistenceService } from './core/persistence-service';
 import { FrontmatterController } from './frontmatter';
-import { DEFAULT_DATA } from './core/default-data';
 import {
     statusNameColorValue,
     STATUS_NAME_COLOR_VAR,
@@ -54,10 +53,12 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.persistence.manifest = { id: this.manifest.id, dir: this.manifest.dir || '' };
         this.persistence.platform = Platform;
 
-        // Load: settings from Obsidian data.json, sessions from the multi-file store.
-        const savedSettings = ((await this.loadData()) || {}) as Partial<SessionData>;
-        const loadedSessions = (await this.persistence.loadSessionDataFromStorage()) || {};
-        this.data = Object.assign({}, DEFAULT_DATA, loadedSessions, this.persistence.extractSettingsData(savedSettings)) as SessionData;
+        // Load: data.json is the source of truth for both settings and sessions —
+        // it is the only file Obsidian Sync carries out of a plugin folder. The
+        // multi-file store under sessions/ supplies version history (never synced)
+        // and acts as the source on a pre-1.0.15 install that has yet to migrate.
+        const savedData = ((await this.loadData()) || {}) as Partial<SessionData>;
+        this.data = await this.persistence.buildInitialData(savedData);
 
         this.session.app = this.app as never;
         this.session.data = this.data;
@@ -126,6 +127,21 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         });
     }
 
+    /**
+     * Obsidian calls this when data.json changes on disk while we are running —
+     * which is exactly what Obsidian Sync does when the other machine pushes a
+     * change. Without it the incoming copy would survive only until our next
+     * save overwrote it.
+     */
+    async onExternalSettingsChange(): Promise<void> {
+        const savedData = ((await this.loadData()) || {}) as Partial<SessionData>;
+        if (!this.persistence.applyExternalDataJson(savedData)) return;
+        this.applyStatusNameColor();
+        this.applyUnsavedHighlightColor();
+        this.updateStatusBar();
+        void this.persistence.persistData();
+    }
+
     onunload(): void {
         this.session.stopHistorySnapshotTimer();
         this.persistence.clearSessionStorageSyncTimers();
@@ -182,7 +198,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         p.notify = (m) => {
             new Notice(m);
         };
-        p.saveSettings = () => this.saveData(this.persistence.extractSettingsData(this.data));
+        p.saveSettings = () => this.saveData(this.persistence.buildDataJsonPayload());
     }
 
     // ------------------------------------------------------------------

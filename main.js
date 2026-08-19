@@ -11979,6 +11979,52 @@ function mergeDiscoveredSessions(data, discovered, options = { generateId: () =>
   }
   return { merged, addedOrphanIds, conflictIds };
 }
+var SYNCED_SESSION_FIELDS = ["id", "name", "layout", "modified", "isDefault"];
+function stripSessionHistory(session) {
+  const out = {};
+  const src = session;
+  for (const key of SYNCED_SESSION_FIELDS) {
+    if (src[key] !== void 0) out[key] = cloneJson(src[key]);
+  }
+  return out;
+}
+function buildSyncedSessionPayload(data) {
+  var _a, _b;
+  const sessions = data.sessions || {};
+  const stripped = {};
+  for (const id2 of Object.keys(sessions)) {
+    if (!sessions[id2]) continue;
+    stripped[id2] = stripSessionHistory(sessions[id2]);
+  }
+  return {
+    activeSessionId: (_a = data.activeSessionId) != null ? _a : null,
+    sessions: stripped,
+    sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],
+    groups: cloneJson(data.groups || {}),
+    groupOrder: Array.isArray(data.groupOrder) ? cloneJson(data.groupOrder) : [],
+    sessionGroups: cloneJson(data.sessionGroups || {}),
+    activeGroupId: (_b = data.activeGroupId) != null ? _b : null
+  };
+}
+function reattachSessionHistory(sessions, historyById) {
+  for (const id2 of Object.keys(sessions)) {
+    const session = sessions[id2];
+    if (!session || session.history !== void 0) continue;
+    const history = historyById[id2];
+    if (Array.isArray(history) && history.length > 0) session.history = cloneJson(history);
+  }
+  return sessions;
+}
+function collectSessionHistory(data) {
+  const out = {};
+  const sessions = data && data.sessions;
+  if (!sessions) return out;
+  for (const id2 of Object.keys(sessions)) {
+    const history = sessions[id2] && sessions[id2].history;
+    if (Array.isArray(history) && history.length > 0) out[id2] = history;
+  }
+  return out;
+}
 
 // src/core/persistence-service.ts
 var EXTERNAL_SESSION_RELOAD_DEBOUNCE_MS = 500;
@@ -12055,6 +12101,8 @@ var PersistenceService = class {
     this._sessionStorageComparableData = null;
     this._sessionStorageDataJson = "";
     this._lastPersistStamp = 0;
+    /** JSON of the session payload last written to / read from data.json. */
+    this._dataJsonSessionJson = "";
     this._lastRotationBackupAt = 0;
     this._persistQueue = null;
     this._persistDebounceTimer = null;
@@ -12483,14 +12531,33 @@ var PersistenceService = class {
       return this.ensureDir(this.getSessionsDirPath()).then(() => this.writeJsonWithBackup(this.getIndexPath(), this.getSessionsBackupPath(), sessionData)).then(() => this.writeIndividualSessionFiles(sessionData)).then(() => this.recordSessionDataStored(sessionData)).then(() => this.rotateBackupIfNeeded(sessionData)).then(() => this.saveSettings());
     });
   }
-  /** Write each session to its own {id}.json file (per-session sync granularity). */
+  /**
+   * Write each session to its own {id}.json file — the local mirror, which
+   * keeps the full session including version history. Files for ids that no
+   * longer exist are removed, so a session deleted on another device does not
+   * linger on disk and get rediscovered as an orphan.
+   */
   writeIndividualSessionFiles(sessionData) {
     const sessions = sessionData.sessions || {};
     const ids = Object.keys(sessions);
     return ids.reduce(
       (chain, id2) => chain.then(() => this.writeJson(this.getSessionFilePath(id2), sessions[id2])),
       Promise.resolve()
-    ).catch(() => void 0);
+    ).then(() => this.pruneStaleSessionFiles(sessions)).catch(() => void 0);
+  }
+  /** Delete mirror files whose session id is no longer present. */
+  pruneStaleSessionFiles(sessions) {
+    const adapter = this.adapter();
+    if (!adapter.list) return Promise.resolve();
+    const keep = {};
+    for (const id2 of Object.keys(sessions)) keep[this.getSessionFilePath(id2)] = true;
+    keep[this.getIndexPath()] = true;
+    keep[this.getSessionsBackupPath()] = true;
+    return adapter.list(this.getSessionsDirPath()).then((listed) => {
+      const files = listed && listed.files || [];
+      const stale = files.filter((path) => /\.json$/i.test(path) && !keep[path]);
+      return stale.reduce((chain, path) => chain.then(() => this.removeIfExists(path)), Promise.resolve());
+    }).catch(() => void 0);
   }
   /** Serialize all writes through a promise queue so they never interleave. */
   persistData() {
@@ -12595,6 +12662,71 @@ var PersistenceService = class {
   resetSessionsAndSettingsToDefault() {
     this.applyDefaultSettingsToCurrentScope();
     return this.resetSessionsToDefault().then(() => this.clearBackupFiles());
+  }
+  // ========================================================================
+  // data.json: the synced source of truth
+  // ========================================================================
+  /**
+   * The complete object written to data.json: every setting plus the session
+   * payload minus version history. This is the only file Obsidian Sync will
+   * carry out of a plugin folder, so everything that must reach the other
+   * device has to be in here.
+   */
+  buildDataJsonPayload() {
+    const sessionPayload = buildSyncedSessionPayload(this.data || {});
+    this._dataJsonSessionJson = JSON.stringify(sessionPayload);
+    return Object.assign({}, this.extractSettingsData(this.data), sessionPayload, {
+      _wppSavedAt: this._lastPersistStamp || Date.now()
+    });
+  }
+  /**
+   * Assemble the in-memory state at load time.
+   *
+   * `savedData` is data.json. When it carries sessions it wins outright — it
+   * is the copy Sync keeps current across devices. Version history never
+   * travels with it, so it is grafted back on from the local mirror. Only when
+   * data.json has no sessions (a pre-1.0.15 install, or a fresh vault) does the
+   * local multi-file store act as the source, which also performs the one-time
+   * migration: the next persist writes those sessions into data.json.
+   */
+  buildInitialData(savedData) {
+    const settings = this.extractSettingsData(savedData);
+    return this.loadSessionDataFromStorage().then((localStore) => {
+      let sessionPart;
+      if (hasNonEmptySessions(savedData)) {
+        const synced = this.extractSessionData(savedData);
+        reattachSessionHistory(synced.sessions, collectSessionHistory(localStore || void 0));
+        sessionPart = synced;
+        this._dataJsonSessionJson = JSON.stringify(buildSyncedSessionPayload(synced));
+      } else {
+        sessionPart = localStore || {};
+        this._dataJsonSessionJson = "";
+      }
+      return Object.assign({}, DEFAULT_DATA, sessionPart, settings);
+    });
+  }
+  /**
+   * Absorb a data.json that changed underneath us — Obsidian Sync rewrites the
+   * file in place while the plugin is running, and without this the next save
+   * would simply overwrite the incoming copy.
+   *
+   * Returns true when the incoming payload differed and was merged in.
+   */
+  applyExternalDataJson(savedData) {
+    if (!savedData || !isSessionDataShape(savedData) || !hasNonEmptySessions(savedData)) return false;
+    const incomingJson = JSON.stringify(buildSyncedSessionPayload(savedData));
+    if (incomingJson === this._dataJsonSessionJson) return false;
+    const settings = this.extractSettingsData(savedData);
+    for (const key of Object.keys(settings)) {
+      this.data[key] = settings[key];
+    }
+    resolveLocale(this.data.language || "auto");
+    const localHistory = collectSessionHistory(this.data);
+    const merged = this.mergeExternalSessionDataForWrite(savedData);
+    reattachSessionHistory(merged.sessions, localHistory);
+    this.applySessionDataFromStorage(merged);
+    this._dataJsonSessionJson = JSON.stringify(buildSyncedSessionPayload(this.data));
+    return true;
   }
   /** True if imported data contains at least one session (used on load). */
   static hasSessions(data) {
@@ -14477,9 +14609,8 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     this.persistence.app = this.app;
     this.persistence.manifest = { id: this.manifest.id, dir: this.manifest.dir || "" };
     this.persistence.platform = import_obsidian15.Platform;
-    const savedSettings = await this.loadData() || {};
-    const loadedSessions = await this.persistence.loadSessionDataFromStorage() || {};
-    this.data = Object.assign({}, DEFAULT_DATA, loadedSessions, this.persistence.extractSettingsData(savedSettings));
+    const savedData = await this.loadData() || {};
+    this.data = await this.persistence.buildInitialData(savedData);
     this.session.app = this.app;
     this.session.data = this.data;
     this.persistence.data = this.data;
@@ -14531,6 +14662,20 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       if (this.session.isVersionHistoryEnabled()) this.session.startHistorySnapshotTimer();
     });
   }
+  /**
+   * Obsidian calls this when data.json changes on disk while we are running —
+   * which is exactly what Obsidian Sync does when the other machine pushes a
+   * change. Without it the incoming copy would survive only until our next
+   * save overwrote it.
+   */
+  async onExternalSettingsChange() {
+    const savedData = await this.loadData() || {};
+    if (!this.persistence.applyExternalDataJson(savedData)) return;
+    this.applyStatusNameColor();
+    this.applyUnsavedHighlightColor();
+    this.updateStatusBar();
+    void this.persistence.persistData();
+  }
   onunload() {
     this.session.stopHistorySnapshotTimer();
     this.persistence.clearSessionStorageSyncTimers();
@@ -14581,7 +14726,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     p.notify = (m) => {
       new import_obsidian15.Notice(m);
     };
-    p.saveSettings = () => this.saveData(this.persistence.extractSettingsData(this.data));
+    p.saveSettings = () => this.saveData(this.persistence.buildDataJsonPayload());
   }
   // ------------------------------------------------------------------
   // Status bar

@@ -3,7 +3,7 @@
 // determinism. Ported from the reference plugin's session-sync helpers and
 // extended for the multi-file storage model (orphan discovery, per-session
 // last-writer-wins by modified time, duplicate-on-conflict).
-import type { Layout, Session, SessionData } from './types';
+import type { HistoryEntry, Layout, Session, SessionData } from './types';
 import { layoutsEqual } from './layout-utils';
 
 export function getPersistStamp(data: unknown): number {
@@ -173,4 +173,81 @@ export function mergeDiscoveredSessions(
     }
 
     return { merged, addedOrphanIds, conflictIds };
+}
+
+// ============================================================================
+// data.json sync channel
+// ============================================================================
+// Obsidian Sync only ever carries four files out of a plugin folder —
+// manifest.json, main.js, styles.css and data.json (its filter requires the
+// path to be exactly `plugins/{id}/{file}` and the basename to be one of those
+// four). Everything under `sessions/` is therefore invisible to it, so the
+// multi-file store can never cross devices on its own. data.json is the only
+// channel available, so the session payload rides in there; the per-session
+// files stay behind as the local mirror/recovery copy.
+
+/** Session fields that travel over Sync. `history` is deliberately absent. */
+export const SYNCED_SESSION_FIELDS = ['id', 'name', 'layout', 'modified', 'isDefault'] as const;
+
+/** A copy of `session` carrying only the synced fields (drops `history`). */
+export function stripSessionHistory(session: Session): Session {
+    const out = {} as Record<string, unknown>;
+    const src = session as unknown as Record<string, unknown>;
+    for (const key of SYNCED_SESSION_FIELDS) {
+        if (src[key] !== undefined) out[key] = cloneJson(src[key]);
+    }
+    return out as unknown as Session;
+}
+
+/**
+ * The session half of data.json: the same shape as the index, minus every
+ * version-history entry. History is ~70% of the payload and is per-device
+ * "undo" state, so it stays local rather than being pushed through Sync.
+ */
+export function buildSyncedSessionPayload(data: Partial<SessionData>): Record<string, unknown> {
+    const sessions = (data.sessions || {}) as Record<string, Session>;
+    const stripped: Record<string, Session> = {};
+    for (const id of Object.keys(sessions)) {
+        if (!sessions[id]) continue;
+        stripped[id] = stripSessionHistory(sessions[id]);
+    }
+    return {
+        activeSessionId: data.activeSessionId ?? null,
+        sessions: stripped,
+        sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],
+        groups: cloneJson(data.groups || {}),
+        groupOrder: Array.isArray(data.groupOrder) ? cloneJson(data.groupOrder) : [],
+        sessionGroups: cloneJson(data.sessionGroups || {}),
+        activeGroupId: data.activeGroupId ?? null,
+    };
+}
+
+/**
+ * Re-attach locally-stored history to sessions that arrived without it (i.e.
+ * from data.json). Sessions with no local counterpart simply have no history.
+ * Mutates and returns `sessions`.
+ */
+export function reattachSessionHistory(
+    sessions: Record<string, Session>,
+    historyById: Record<string, HistoryEntry[] | undefined>,
+): Record<string, Session> {
+    for (const id of Object.keys(sessions)) {
+        const session = sessions[id];
+        if (!session || session.history !== undefined) continue;
+        const history = historyById[id];
+        if (Array.isArray(history) && history.length > 0) session.history = cloneJson(history);
+    }
+    return sessions;
+}
+
+/** Map of session id -> history entries, harvested from a session data object. */
+export function collectSessionHistory(data: Partial<SessionData> | null | undefined): Record<string, HistoryEntry[]> {
+    const out: Record<string, HistoryEntry[]> = {};
+    const sessions = (data && data.sessions) as Record<string, Session> | undefined;
+    if (!sessions) return out;
+    for (const id of Object.keys(sessions)) {
+        const history = sessions[id] && sessions[id].history;
+        if (Array.isArray(history) && history.length > 0) out[id] = history;
+    }
+    return out;
 }
