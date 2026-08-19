@@ -1,6 +1,6 @@
 # Workspace Manager
 
-Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) community plugin for saving, switching, and organizing workspace sessions. It is built for people who want Obsidian layouts to feel fast, native, and keyboard-friendly — with **local-first, sync-friendly storage** so sessions travel cleanly between devices under Obsidian Sync.
+Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) community plugin for saving, switching, and organizing workspace sessions. It is built for people who want Obsidian layouts to feel fast, native, and keyboard-friendly — with **local-first storage that actually crosses devices** under Obsidian Sync.
 
 > **Derived from [obsidian-workspace-plus](https://github.com/s1m4ne/obsidian-workspace-plus)**
 > by s1m4ne. Workspace Manager is a modern TypeScript rewrite of that plugin with
@@ -33,10 +33,12 @@ Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) commu
 
 ## What's different from the original
 
-- **Sync-friendly storage.** Sessions are stored as individual files at `{vault}/.obsidian/plugins/workspace-mgr/sessions/{session_id}.json` with an index at `sessions/index.json`, instead of a single vault-root file. On startup the plugin scans the sessions directory and auto-merges any session files that arrived from another device but are not yet in the index.
+- **Storage that Obsidian Sync will actually carry.** Sessions live in `data.json` alongside the settings. Obsidian Sync only ever transfers four files out of a plugin folder — `manifest.json`, `main.js`, `styles.css` and `data.json` — so anything stored in a subfolder can never reach a second machine. A full mirror is still written to `{vault}/.obsidian/plugins/workspace-mgr/sessions/{session_id}.json` with an index at `sessions/index.json`, which is what holds version history and what the plugin falls back to for recovery.
+- **Version history stays on the device that made it.** History snapshots are excluded from the synced payload — they are typically ~70% of the bytes, and they are per-device undo state. They are kept in the local mirror and re-attached to each session at load.
+- **Live absorption of a synced change.** Obsidian Sync rewrites `data.json` underneath a running plugin; `onExternalSettingsChange` merges the incoming copy into memory instead of letting the next local save overwrite it.
 - **Conflict-free merging.** Session contents merge last-writer-wins by modified time; the index is union-merged; sessions are never deleted during a merge. If an incoming synced session is newer *and* its content diverges, it is preserved as a duplicate named `… (Conflict - <timestamp>)` rather than overwriting.
 - **Status-bar colours.** The session-name colour and the unsaved-changes highlight colour are each settings colour pickers with separate light/dark-theme values, applied via CSS custom properties on the document root (no dynamic style injection) and resolved against Obsidian's active theme.
-- **Modern, testable codebase.** Rewritten in TypeScript with a pure, dependency-free decision core (`src/core/`) that imports nothing from Obsidian, covered by a headless Vitest suite (115 tests, including the original plugin's 83 behavioral tests ported over).
+- **Modern, testable codebase.** Rewritten in TypeScript with a pure, dependency-free decision core (`src/core/`) that imports nothing from Obsidian, covered by a headless Vitest suite (131 tests, including the original plugin's 83 behavioral tests ported over).
 
 > Sessions start fresh in the new location. Data from the original
 > `workspace-plus-plus` plugin is **not** migrated or read.
@@ -54,6 +56,19 @@ Open the command palette and search for *Workspace Manager* to switch sessions, 
 | Adapters | `src/adapter/` | Confine undocumented internals: workspace `getLayout`/`changeLayout`, and the opt-in macOS menu-bar `Menu`/`MenuItem` integration. |
 | Shell | `src/` | `main.ts` (Plugin), status bar, settings, front-matter, modals/menus. |
 | Tests | `tests/` | Vitest, headless. |
+
+### Storage layout
+
+| File | Synced? | Contents |
+|---|---|---|
+| `.obsidian/plugins/workspace-mgr/data.json` | ✅ yes | Source of truth: every setting plus all sessions, groups and order — minus version history. |
+| `.obsidian/plugins/workspace-mgr/sessions/{id}.json` | ❌ no | Local mirror of each session, *including* its version history. |
+| `.obsidian/plugins/workspace-mgr/sessions/index.json` | ❌ no | Local mirror index (plus `index.backup.json`). |
+| `.obsidian/plugins/workspace-mgr/backups/sessions.{1,2,3}.json` | ❌ no | Hourly rotating local snapshots. |
+
+Obsidian Sync's file filter accepts a plugin path only when it is exactly `plugins/{id}/{file}` and the basename is `manifest.json`, `main.js`, `styles.css` or `data.json`; everything in a subfolder is filtered out, which is why the synced state has to live in `data.json`.
+
+Installs from before 1.0.15 migrate on first launch: the multi-file store seeds the first `data.json` write, with no user action required.
 
 ## Development
 
