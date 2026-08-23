@@ -50,6 +50,8 @@ function openSessionMenuAction(plugin: StatusBarActionPlugin, event: unknown): v
         showRemoveFromGroup: false,
         showMoveToGroup: plugin.isGroupFeatureEnabled() && plugin.getOrderedGroups().length > 0,
         showCustomizeClicks: true,
+        showManageLayouts: true,
+        onManageLayouts: () => new SessionManagerModal(plugin.app as never, plugin as never).open(),
         forceDeleteConfirm: true,
         notifyDeleted: false,
         onSessionsChanged: () => plugin.updateStatusBar(),

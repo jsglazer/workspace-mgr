@@ -13205,6 +13205,10 @@ function openSessionContextMenu(options) {
   }
   menu.addSeparator();
   item(L2.contextDeleteSession, "trash", options.onDelete);
+  if (options.showManageLayouts && options.onManageLayouts) {
+    menu.addSeparator();
+    item(L2.modalTitle, "list", options.onManageLayouts);
+  }
   const evt = options.event;
   if (evt && typeof evt.clientX === "number") menu.showAtMouseEvent(evt);
   else menu.showAtPosition({ x: 0, y: 0 });
@@ -13583,7 +13587,9 @@ function createSessionContextMenuOptions(options) {
     showRemoveFromGroup: optionOrDefault(opts, "showRemoveFromGroup", !!getViewGroupId()),
     showMoveToGroup: optionOrDefault(opts, "showMoveToGroup", shouldShowMoveToGroup(plugin)),
     showCustomizeClicks: !!opts.showCustomizeClicks,
+    showManageLayouts: !!opts.showManageLayouts,
     onCustomizeClicks: opts.onCustomizeClicks || defaultCustomizeClicks,
+    onManageLayouts: opts.onManageLayouts,
     onSave: opts.onSave || defaultSave,
     onReload: opts.onReload || defaultReload,
     onSaveAs: opts.onSaveAs || defaultSaveAs,
@@ -14118,6 +14124,8 @@ function openSessionMenuAction(plugin, event) {
     showRemoveFromGroup: false,
     showMoveToGroup: plugin.isGroupFeatureEnabled() && plugin.getOrderedGroups().length > 0,
     showCustomizeClicks: true,
+    showManageLayouts: true,
+    onManageLayouts: () => new SessionManagerModal(plugin.app, plugin).open(),
     forceDeleteConfirm: true,
     notifyDeleted: false,
     onSessionsChanged: () => plugin.updateStatusBar()
@@ -14815,13 +14823,21 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
         (item) => item.setTitle(session.name).setChecked(session.id === this.data.activeSessionId).onClick(() => void this.session.switchSession(session.id))
       );
     };
+    const addManageLayoutsItem = () => {
+      menu.addSeparator();
+      menu.addItem(
+        (item) => item.setTitle(L2.modalTitle).setIcon("list").onClick(() => new SessionManagerModal(this.app, this).open())
+      );
+    };
     const allSessions = this.session.getOrderedSessions();
     if (allSessions.length === 0) {
       menu.addItem((item) => item.setTitle(L2.ribbonWorkspacesEmpty).setDisabled(true));
+      addManageLayoutsItem();
       return menu;
     }
     if (!this.session.isGroupFeatureEnabled()) {
       for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
+      addManageLayoutsItem();
       return menu;
     }
     const sessionGroups = this.data.sessionGroups || {};
@@ -14837,6 +14853,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       for (const session of groupSessions) addSessionItem(session);
       wroteBlock = true;
     }
+    addManageLayoutsItem();
     return menu;
   }
   // ------------------------------------------------------------------

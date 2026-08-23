@@ -51,7 +51,9 @@ export interface SessionContextActionOptions {
     showRemoveFromGroup?: boolean;
     showMoveToGroup?: boolean;
     showCustomizeClicks?: boolean;
+    showManageLayouts?: boolean;
     onCustomizeClicks?: () => unknown;
+    onManageLayouts?: () => unknown;
     forceDeleteConfirm?: boolean;
     notifyDeleted?: boolean;
     deleteConfirmMessage?: string;
@@ -209,7 +211,9 @@ export function createSessionContextMenuOptions(options: SessionContextActionOpt
         showRemoveFromGroup: optionOrDefault(opts, 'showRemoveFromGroup', !!getViewGroupId()),
         showMoveToGroup: optionOrDefault(opts, 'showMoveToGroup', shouldShowMoveToGroup(plugin)),
         showCustomizeClicks: !!opts.showCustomizeClicks,
+        showManageLayouts: !!opts.showManageLayouts,
         onCustomizeClicks: opts.onCustomizeClicks || defaultCustomizeClicks,
+        onManageLayouts: opts.onManageLayouts,
         onSave: opts.onSave || defaultSave,
         onReload: opts.onReload || defaultReload,
         onSaveAs: opts.onSaveAs || defaultSaveAs,

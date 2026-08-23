@@ -303,14 +303,26 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             );
         };
 
+        const addManageLayoutsItem = (): void => {
+            menu.addSeparator();
+            menu.addItem((item) =>
+                item
+                    .setTitle(L.modalTitle)
+                    .setIcon('list')
+                    .onClick(() => new SessionManagerModal(this.app, this as never).open()),
+            );
+        };
+
         const allSessions = this.session.getOrderedSessions();
         if (allSessions.length === 0) {
             menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
+            addManageLayoutsItem();
             return menu;
         }
 
         if (!this.session.isGroupFeatureEnabled()) {
             for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
+            addManageLayoutsItem();
             return menu;
         }
 
@@ -330,6 +342,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             for (const session of groupSessions) addSessionItem(session);
             wroteBlock = true;
         }
+        addManageLayoutsItem();
         return menu;
     }
 

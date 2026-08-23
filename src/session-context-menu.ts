@@ -19,7 +19,9 @@ export interface SessionContextMenuOptions {
     showRemoveFromGroup?: boolean;
     showMoveToGroup?: boolean;
     showCustomizeClicks?: boolean;
+    showManageLayouts?: boolean;
     onCustomizeClicks?: () => unknown;
+    onManageLayouts?: () => unknown;
     onSave?: () => unknown;
     onReload?: () => unknown;
     onSaveAs?: () => unknown;
@@ -70,6 +72,11 @@ export function openSessionContextMenu(options: SessionContextMenuOptions): void
 
     menu.addSeparator();
     item(L.contextDeleteSession, 'trash', options.onDelete);
+
+    if (options.showManageLayouts && options.onManageLayouts) {
+        menu.addSeparator();
+        item(L.modalTitle, 'list', options.onManageLayouts);
+    }
 
     const evt = options.event as MouseEvent | undefined;
     if (evt && typeof (evt as MouseEvent).clientX === 'number') menu.showAtMouseEvent(evt);
