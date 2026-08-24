@@ -285,6 +285,7 @@ export interface Strings {
     settingsMenuBarEnabled: string;
     settingsMenuBarEnabledDesc: string;
     ribbonWorkspacesEmpty: string;
+    ribbonNoOtherWorkspaces: string;
     ribbonUngrouped: string;
     confirmDeleteGroup: LocaleFn;
     groupAddedSession: LocaleFn;

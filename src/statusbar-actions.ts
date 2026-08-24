@@ -16,6 +16,7 @@ interface StatusBarActionPlugin {
     getActiveSession(): Session | null;
     saveActiveSession(): Promise<boolean>;
     saveAsSession(): Promise<boolean>;
+    openSaveCurrentLayoutMenu(event?: unknown): void;
     saveCurrentNoteNameAsSession(): Promise<unknown>;
     reloadCurrentSessionWithoutSaving(): Promise<boolean>;
     renameCurrentSession(): void;
@@ -89,6 +90,11 @@ const ACTIONS: ActionDef[] = [
     },
     { id: 'saveSession', labelKey: 'statusBarActionSaveSession', run: (plugin) => plugin.saveActiveSession() },
     { id: 'saveAsSession', labelKey: 'cmdSaveAs', run: (plugin) => plugin.saveAsSession() },
+    {
+        id: 'saveCurrentLayoutToSession',
+        labelKey: 'cmdSaveCurrentLayoutToSession',
+        run: (plugin, event) => plugin.openSaveCurrentLayoutMenu(event),
+    },
     {
         id: 'saveCurrentNoteNameAsSession',
         labelKey: 'cmdSaveCurrentNoteNameAsSession',

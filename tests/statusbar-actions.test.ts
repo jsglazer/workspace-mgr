@@ -27,6 +27,7 @@ describe('statusbar-actions', () => {
     test('exposes first-pass direct action ids', () => {
         const expected = [
             'saveAsSession',
+            'saveCurrentLayoutToSession',
             'saveCurrentNoteNameAsSession',
             'renameSession',
             'duplicateSession',
@@ -44,6 +45,9 @@ describe('statusbar-actions', () => {
             saveAsSession: () => {
                 calls.push('saveAsSession');
                 return Promise.resolve(true);
+            },
+            openSaveCurrentLayoutMenu: (event: unknown) => {
+                calls.push(['openSaveCurrentLayoutMenu', event]);
             },
             saveCurrentNoteNameAsSession: () => {
                 calls.push('saveCurrentNoteNameAsSession');
@@ -71,6 +75,7 @@ describe('statusbar-actions', () => {
         };
 
         await statusBarActions.executeStatusBarAction(plugin as never, 'saveAsSession');
+        await statusBarActions.executeStatusBarAction(plugin as never, 'saveCurrentLayoutToSession', 'evt');
         await statusBarActions.executeStatusBarAction(plugin as never, 'saveCurrentNoteNameAsSession');
         await statusBarActions.executeStatusBarAction(plugin as never, 'renameSession');
         await statusBarActions.executeStatusBarAction(plugin as never, 'duplicateSession');
@@ -81,6 +86,7 @@ describe('statusbar-actions', () => {
 
         expect(calls).toEqual([
             'saveAsSession',
+            ['openSaveCurrentLayoutMenu', 'evt'],
             'saveCurrentNoteNameAsSession',
             'renameCurrentSession',
             'duplicateCurrentSession',
@@ -95,6 +101,7 @@ describe('statusbar-actions', () => {
         const L = {
             statusBarActionNone: 'Do nothing',
             cmdSaveAs: 'Save current session as...',
+            cmdSaveCurrentLayoutToSession: 'Save current layout to session...',
             cmdSaveCurrentNoteNameAsSession: 'Save current note name as session',
             cmdRename: 'Rename current session',
             cmdDuplicate: 'Duplicate current session',
@@ -104,6 +111,9 @@ describe('statusbar-actions', () => {
             cmdToggleAutoSave: 'Toggle auto-save on switch',
         };
         expect(statusBarActions.getActionLabel(L, 'saveAsSession')).toBe('Save current session as...');
+        expect(statusBarActions.getActionLabel(L, 'saveCurrentLayoutToSession')).toBe(
+            'Save current layout to session...',
+        );
         expect(statusBarActions.getActionLabel(L, 'saveCurrentNoteNameAsSession')).toBe(
             'Save current note name as session',
         );

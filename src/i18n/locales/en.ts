@@ -303,6 +303,7 @@ const main = {
         settingsMenuBarEnabled: 'Show workspace in macOS menu bar',
         settingsMenuBarEnabledDesc: 'Displays "{Vault} - {Workspace}" in the macOS system menu bar. macOS desktop only — no effect on Windows, Linux, or mobile.',
         ribbonWorkspacesEmpty: 'No workspaces yet',
+        ribbonNoOtherWorkspaces: 'No other workspaces yet',
         ribbonUngrouped: 'Ungrouped',
         confirmDeleteGroup: function (n) { return 'Delete group "' + n + '"? Sessions inside this group will NOT be deleted.'; },
         groupAddedSession: function (s, g) { return 'Added "' + s + '" to "' + g + '"'; },

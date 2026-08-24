@@ -313,6 +313,22 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             );
         };
 
+        const addFooterActions = (): void => {
+            menu.addSeparator();
+            menu.addItem((item) =>
+                item
+                    .setTitle(L.cmdSaveCurrentLayoutToSession)
+                    .setIcon('save-all')
+                    .onClick((evt) => this.openSaveCurrentLayoutMenu(evt)),
+            );
+            menu.addItem((item) =>
+                item
+                    .setTitle(L.modalTitle)
+                    .setIcon('list')
+                    .onClick(() => new SessionManagerModal(this.app, this as never).open()),
+            );
+        };
+
         const allSessions = this.session.getOrderedSessions();
         if (allSessions.length === 0) {
             menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
@@ -322,7 +338,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
 
         if (!this.session.isGroupFeatureEnabled()) {
             for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
-            addManageLayoutsItem();
+            addFooterActions();
             return menu;
         }
 
@@ -342,7 +358,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             for (const session of groupSessions) addSessionItem(session);
             wroteBlock = true;
         }
-        addManageLayoutsItem();
+        addFooterActions();
         return menu;
     }
 
@@ -355,6 +371,11 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.addCommand({ id: 'previous-session', name: L.cmdPrevious, callback: () => void this.session.switchRelative(-1) });
         this.addCommand({ id: 'save-session', name: L.cmdSaveCurrent, callback: () => void this.session.saveActiveSession() });
         this.addCommand({ id: 'save-as', name: L.cmdSaveAs, callback: () => void this.saveAsSession() });
+        this.addCommand({
+            id: 'save-current-layout-to-session',
+            name: L.cmdSaveCurrentLayoutToSession,
+            callback: () => this.openSaveCurrentLayoutMenu(),
+        });
         this.addCommand({ id: 'new-empty-session', name: L.cmdNewEmpty, callback: () => void this.session.createEmptySession() });
         this.addCommand({ id: 'open-session-manager', name: L.modalTitle, callback: () => new SessionManagerModal(this.app, this as never).open() });
         this.addCommand({
@@ -505,6 +526,36 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
                 },
             ).open();
         });
+    }
+
+    /** Build (or open) a picker menu of every non-active session, to overwrite with the current layout. */
+    private populateSaveCurrentLayoutMenu(menu: Menu): void {
+        const L = i18n.L;
+        const others = this.session
+            .getOrderedSessions()
+            .filter((s) => s.id !== this.data.activeSessionId)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        if (others.length === 0) {
+            menu.addItem((item) => item.setTitle(L.ribbonNoOtherWorkspaces).setDisabled(true));
+            return;
+        }
+        for (const session of others) {
+            menu.addItem((item) =>
+                item
+                    .setTitle(session.name)
+                    .setIcon('save')
+                    .onClick(() => this.confirmOverwriteSessionWithCurrentLayout(session.id)),
+            );
+        }
+    }
+
+    /** Open a picker menu of every non-active session; picking one overwrites it with the current layout. */
+    openSaveCurrentLayoutMenu(event?: unknown): void {
+        const menu = new Menu();
+        this.populateSaveCurrentLayoutMenu(menu);
+        const evt = event as MouseEvent | undefined;
+        if (evt && typeof evt.clientX === 'number') menu.showAtMouseEvent(evt);
+        else menu.showAtPosition({ x: 0, y: 0 });
     }
 
     /** Confirm overwriting a session with the current layout. */

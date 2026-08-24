@@ -398,6 +398,7 @@ var main = {
   settingsMenuBarEnabled: "Show workspace in macOS menu bar",
   settingsMenuBarEnabledDesc: 'Displays "{Vault} - {Workspace}" in the macOS system menu bar. macOS desktop only \u2014 no effect on Windows, Linux, or mobile.',
   ribbonWorkspacesEmpty: "No workspaces yet",
+  ribbonNoOtherWorkspaces: "No other workspaces yet",
   ribbonUngrouped: "Ungrouped",
   confirmDeleteGroup: function(n) {
     return 'Delete group "' + n + '"? Sessions inside this group will NOT be deleted.';
@@ -14157,6 +14158,11 @@ var ACTIONS = [
   { id: "saveSession", labelKey: "statusBarActionSaveSession", run: (plugin) => plugin.saveActiveSession() },
   { id: "saveAsSession", labelKey: "cmdSaveAs", run: (plugin) => plugin.saveAsSession() },
   {
+    id: "saveCurrentLayoutToSession",
+    labelKey: "cmdSaveCurrentLayoutToSession",
+    run: (plugin, event) => plugin.openSaveCurrentLayoutMenu(event)
+  },
+  {
     id: "saveCurrentNoteNameAsSession",
     labelKey: "cmdSaveCurrentNoteNameAsSession",
     run: (plugin) => plugin.saveCurrentNoteNameAsSession()
@@ -14829,6 +14835,15 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
         (item) => item.setTitle(L2.modalTitle).setIcon("list").onClick(() => new SessionManagerModal(this.app, this).open())
       );
     };
+    const addFooterActions = () => {
+      menu.addSeparator();
+      menu.addItem(
+        (item) => item.setTitle(L2.cmdSaveCurrentLayoutToSession).setIcon("save-all").onClick((evt) => this.openSaveCurrentLayoutMenu(evt))
+      );
+      menu.addItem(
+        (item) => item.setTitle(L2.modalTitle).setIcon("list").onClick(() => new SessionManagerModal(this.app, this).open())
+      );
+    };
     const allSessions = this.session.getOrderedSessions();
     if (allSessions.length === 0) {
       menu.addItem((item) => item.setTitle(L2.ribbonWorkspacesEmpty).setDisabled(true));
@@ -14837,7 +14852,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     }
     if (!this.session.isGroupFeatureEnabled()) {
       for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
-      addManageLayoutsItem();
+      addFooterActions();
       return menu;
     }
     const sessionGroups = this.data.sessionGroups || {};
@@ -14853,7 +14868,7 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
       for (const session of groupSessions) addSessionItem(session);
       wroteBlock = true;
     }
-    addManageLayoutsItem();
+    addFooterActions();
     return menu;
   }
   // ------------------------------------------------------------------
@@ -14865,6 +14880,11 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     this.addCommand({ id: "previous-session", name: L2.cmdPrevious, callback: () => void this.session.switchRelative(-1) });
     this.addCommand({ id: "save-session", name: L2.cmdSaveCurrent, callback: () => void this.session.saveActiveSession() });
     this.addCommand({ id: "save-as", name: L2.cmdSaveAs, callback: () => void this.saveAsSession() });
+    this.addCommand({
+      id: "save-current-layout-to-session",
+      name: L2.cmdSaveCurrentLayoutToSession,
+      callback: () => this.openSaveCurrentLayoutMenu()
+    });
     this.addCommand({ id: "new-empty-session", name: L2.cmdNewEmpty, callback: () => void this.session.createEmptySession() });
     this.addCommand({ id: "open-session-manager", name: L2.modalTitle, callback: () => new SessionManagerModal(this.app, this).open() });
     this.addCommand({
@@ -15011,6 +15031,28 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
         }
       ).open();
     });
+  }
+  /** Build (or open) a picker menu of every non-active session, to overwrite with the current layout. */
+  populateSaveCurrentLayoutMenu(menu) {
+    const L2 = L;
+    const others = this.session.getOrderedSessions().filter((s) => s.id !== this.data.activeSessionId).sort((a, b) => a.name.localeCompare(b.name));
+    if (others.length === 0) {
+      menu.addItem((item) => item.setTitle(L2.ribbonNoOtherWorkspaces).setDisabled(true));
+      return;
+    }
+    for (const session of others) {
+      menu.addItem(
+        (item) => item.setTitle(session.name).setIcon("save").onClick(() => this.confirmOverwriteSessionWithCurrentLayout(session.id))
+      );
+    }
+  }
+  /** Open a picker menu of every non-active session; picking one overwrites it with the current layout. */
+  openSaveCurrentLayoutMenu(event) {
+    const menu = new import_obsidian15.Menu();
+    this.populateSaveCurrentLayoutMenu(menu);
+    const evt = event;
+    if (evt && typeof evt.clientX === "number") menu.showAtMouseEvent(evt);
+    else menu.showAtPosition({ x: 0, y: 0 });
   }
   /** Confirm overwriting a session with the current layout. */
   confirmOverwriteSessionWithCurrentLayout(sessionId, options) {
