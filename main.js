@@ -14011,7 +14011,7 @@ var UnsavedSwitchModal = class extends import_obsidian11.Modal {
     super(app);
     this.didResolve = false;
     this.buttons = [];
-    this.focusedButtonIndex = 1;
+    this.focusedButtonIndex = 2;
     this.keyHandler = null;
     this.message = message;
     this.onSaveAndSwitch = onSaveAndSwitch;
@@ -14035,18 +14035,18 @@ var UnsavedSwitchModal = class extends import_obsidian11.Modal {
       finish(this.onCancel);
       this.close();
     });
-    const saveAndSwitchBtn = btns.createEl("button", { text: L2.saveAndSwitch, cls: "mod-cta" });
+    const saveAndSwitchBtn = btns.createEl("button", { text: L2.saveAndSwitch });
     saveAndSwitchBtn.addEventListener("click", () => {
       finish(this.onSaveAndSwitch);
       this.close();
     });
-    const switchWithoutSavingBtn = btns.createEl("button", { text: L2.switchWithoutSaving, cls: "mod-warning" });
+    const switchWithoutSavingBtn = btns.createEl("button", { text: L2.switchWithoutSaving, cls: "mod-cta" });
     switchWithoutSavingBtn.addEventListener("click", () => {
       finish(this.onSwitchWithoutSaving);
       this.close();
     });
     this.buttons = [cancelBtn, saveAndSwitchBtn, switchWithoutSavingBtn];
-    this.focusedButtonIndex = 1;
+    this.focusedButtonIndex = 2;
     this.updateButtonFocus();
     this.keyHandler = (e) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
@@ -14837,6 +14837,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian15.Plugin {
     };
     const addFooterActions = () => {
       menu.addSeparator();
+      menu.addItem(
+        (item) => item.setTitle(L2.statusBarActionSaveSession).setIcon("save").onClick(() => void this.session.saveActiveSession())
+      );
       menu.addItem(
         (item) => item.setTitle(L2.cmdSaveCurrentLayoutToSession).setIcon("save-all").onClick((evt) => this.openSaveCurrentLayoutMenu(evt))
       );

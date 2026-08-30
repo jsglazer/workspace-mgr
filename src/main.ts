@@ -317,6 +317,12 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
             menu.addSeparator();
             menu.addItem((item) =>
                 item
+                    .setTitle(L.statusBarActionSaveSession)
+                    .setIcon('save')
+                    .onClick(() => void this.session.saveActiveSession()),
+            );
+            menu.addItem((item) =>
+                item
                     .setTitle(L.cmdSaveCurrentLayoutToSession)
                     .setIcon('save-all')
                     .onClick((evt) => this.openSaveCurrentLayoutMenu(evt)),

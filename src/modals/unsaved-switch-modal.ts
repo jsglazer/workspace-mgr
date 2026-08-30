@@ -9,7 +9,7 @@ export default class UnsavedSwitchModal extends Modal {
     private onCancel: () => void;
     private didResolve = false;
     private buttons: HTMLButtonElement[] = [];
-    private focusedButtonIndex = 1;
+    private focusedButtonIndex = 2;
     private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
     constructor(
@@ -44,19 +44,19 @@ export default class UnsavedSwitchModal extends Modal {
             finish(this.onCancel);
             this.close();
         });
-        const saveAndSwitchBtn = btns.createEl('button', { text: L.saveAndSwitch, cls: 'mod-cta' });
+        const saveAndSwitchBtn = btns.createEl('button', { text: L.saveAndSwitch });
         saveAndSwitchBtn.addEventListener('click', () => {
             finish(this.onSaveAndSwitch);
             this.close();
         });
-        const switchWithoutSavingBtn = btns.createEl('button', { text: L.switchWithoutSaving, cls: 'mod-warning' });
+        const switchWithoutSavingBtn = btns.createEl('button', { text: L.switchWithoutSaving, cls: 'mod-cta' });
         switchWithoutSavingBtn.addEventListener('click', () => {
             finish(this.onSwitchWithoutSaving);
             this.close();
         });
 
         this.buttons = [cancelBtn, saveAndSwitchBtn, switchWithoutSavingBtn];
-        this.focusedButtonIndex = 1;
+        this.focusedButtonIndex = 2;
         this.updateButtonFocus();
 
         this.keyHandler = (e: KeyboardEvent) => {
