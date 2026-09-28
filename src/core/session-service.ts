@@ -12,6 +12,7 @@ import * as i18n from '../i18n';
 import { generateId } from './utils';
 import * as layoutUtils from './layout-utils';
 import { DEFAULT_DATA } from './default-data';
+import { recordSessionTombstone } from './sync';
 import type { AppLike, CommandLike, NamePromptOptions } from './host';
 import type { Group, HistoryEntry, Layout, Session, SessionData } from './types';
 
@@ -483,6 +484,10 @@ export class SessionService {
         let nextActiveId: string | null = null;
 
         delete this.data.sessions[sessionId];
+        // Tombstone the id so a device that still holds the session cannot sync
+        // it back: without this, the merge sees "remote has it, we don't" and
+        // re-adds it, and the delete never sticks.
+        this.data.deletedSessions = recordSessionTombstone(this.data.deletedSessions, sessionId, Date.now());
         const orderIdx = this.data.sessionOrder.indexOf(sessionId);
         if (orderIdx !== -1) this.data.sessionOrder.splice(orderIdx, 1);
 
@@ -770,9 +775,15 @@ export class SessionService {
         });
     }
 
+    /**
+     * Overwrite a session with the current layout. With `activate`, the target
+     * also becomes the active session: the window now shows exactly its layout,
+     * so the status bar should name it rather than the session we came from
+     * (whose own saved layout is left untouched).
+     */
     overwriteSessionWithCurrentLayout(
         sessionId: string,
-        options?: { silent?: boolean; touchModified?: boolean },
+        options?: { silent?: boolean; touchModified?: boolean; activate?: boolean },
     ): Promise<boolean> {
         const L = i18n.L;
         const opts = options || {};
@@ -786,6 +797,7 @@ export class SessionService {
         this.pushLayoutToHistory(session);
         session.layout = currentLayout;
         if (changed || opts.touchModified) session.modified = Date.now();
+        if (opts.activate) this.data.activeSessionId = sessionId;
         this.updateStatusBar();
         return this.persistData().then(() => {
             if (!opts.silent) {

@@ -24,10 +24,14 @@ import {
     getPersistStamp,
     getSessionModified,
     isSessionDataShape,
+    isSessionTombstoned,
     mergeDiscoveredSessions,
     mergeObjectWithLocalDeletes,
     mergeOrder,
+    mergeSessionTombstones,
+    normalizeSessionTombstones,
     reattachSessionHistory,
+    type SessionTombstones,
 } from './sync';
 import type { AppLike } from './host';
 import type { Session, SessionData } from './types';
@@ -44,6 +48,7 @@ const SESSION_KEYS = [
     'groupOrder',
     'sessionGroups',
     'activeGroupId',
+    'deletedSessions',
 ] as const;
 
 const SETTINGS_KEYS = [
@@ -90,6 +95,7 @@ interface NormalizedSessionData {
     groupOrder: string[];
     sessionGroups: Record<string, string[]>;
     activeGroupId: string | null;
+    deletedSessions: SessionTombstones;
 }
 
 function pickKeys<T extends Record<string, unknown>>(data: T | undefined, keys: readonly string[]): Record<string, unknown> {
@@ -189,7 +195,20 @@ export class PersistenceService {
     // Normalization / extraction
     // ========================================================================
     normalizeSessionData(raw: Partial<SessionData> | undefined): NormalizedSessionData {
-        const sessions = raw && raw.sessions && typeof raw.sessions === 'object' ? raw.sessions : {};
+        const rawSessions = raw && raw.sessions && typeof raw.sessions === 'object' ? raw.sessions : {};
+        const deletedSessions = normalizeSessionTombstones(raw && raw.deletedSessions);
+        // Drop tombstoned sessions. Only copy the map when something is dropped,
+        // so the common case keeps the caller's object identity.
+        const tombstonedIds = Object.keys(rawSessions).filter((id) =>
+            isSessionTombstoned(rawSessions[id], id, deletedSessions),
+        );
+        let sessions = rawSessions;
+        if (tombstonedIds.length > 0) {
+            sessions = {};
+            for (const id of Object.keys(rawSessions)) {
+                if (tombstonedIds.indexOf(id) === -1) sessions[id] = rawSessions[id];
+            }
+        }
         const rawOrder = Array.isArray(raw && raw.sessionOrder) ? (raw!.sessionOrder as string[]) : Object.keys(sessions);
         const seen: Record<string, boolean> = {};
         const order: string[] = [];
@@ -244,6 +263,7 @@ export class PersistenceService {
             groupOrder,
             sessionGroups: sessionGroupsCleaned,
             activeGroupId,
+            deletedSessions,
         };
     }
 
@@ -383,6 +403,7 @@ export class PersistenceService {
             groupOrder: mergeOrder(external.groupOrder, local.groupOrder, groups),
             sessionGroups,
             activeGroupId: local.activeGroupId || external.activeGroupId,
+            deletedSessions: mergeSessionTombstones(external.deletedSessions, local.deletedSessions),
         } as Partial<SessionData>);
     }
 
@@ -401,6 +422,7 @@ export class PersistenceService {
         this.data.groups = next.groups || {};
         this.data.groupOrder = next.groupOrder || [];
         this.data.sessionGroups = next.sessionGroups || {};
+        this.data.deletedSessions = next.deletedSessions || {};
 
         if (localActiveSessionId && this.data.sessions[localActiveSessionId]) {
             this.data.activeSessionId = localActiveSessionId;
@@ -559,7 +581,10 @@ export class PersistenceService {
                 );
             })
             .then((sessions) => {
-                const discovered = sessions.filter((s): s is Session => !!s && typeof s.id === 'string');
+                const tombstones = normalizeSessionTombstones(intoData.deletedSessions);
+                const discovered = sessions.filter(
+                    (s): s is Session => !!s && typeof s.id === 'string' && !isSessionTombstoned(s, s.id, tombstones),
+                );
                 if (discovered.length === 0) return intoData;
                 const { merged } = mergeDiscoveredSessions(intoData, discovered, { generateId });
                 return merged;

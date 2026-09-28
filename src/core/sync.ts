@@ -31,6 +31,55 @@ export function getSessionModified(session: unknown): number {
     return modified;
 }
 
+// ----------------------------------------------------------------------------
+// Session tombstones: `deletedSessions` maps a deleted session id to the time
+// it was deleted. It travels in data.json so a delete reaches every device; a
+// session is dropped wherever its tombstone is at least as new as its last
+// modification (an edit made after the delete on another device still wins).
+// ----------------------------------------------------------------------------
+
+/** Tombstones older than this are forgotten; every device has long since synced. */
+export const SESSION_TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+export type SessionTombstones = Record<string, number>;
+
+/** Coerce an arbitrary value into a clean tombstone map, dropping expired entries. */
+export function normalizeSessionTombstones(raw: unknown, now: number = Date.now()): SessionTombstones {
+    const out: SessionTombstones = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const id of Object.keys(raw as Record<string, unknown>)) {
+        const at = (raw as Record<string, unknown>)[id];
+        if (typeof at !== 'number' || !isFinite(at) || at <= 0) continue;
+        if (now - at > SESSION_TOMBSTONE_TTL_MS) continue;
+        out[id] = at;
+    }
+    return out;
+}
+
+/** Union of two tombstone maps, keeping the later deletion time per id. */
+export function mergeSessionTombstones(a: unknown, b: unknown, now: number = Date.now()): SessionTombstones {
+    const out = normalizeSessionTombstones(a, now);
+    const other = normalizeSessionTombstones(b, now);
+    for (const id of Object.keys(other)) {
+        if (!out[id] || other[id] > out[id]) out[id] = other[id];
+    }
+    return out;
+}
+
+/** Return a copy of `tombstones` with `sessionId` marked deleted at `at`. */
+export function recordSessionTombstone(tombstones: unknown, sessionId: string, at: number): SessionTombstones {
+    const out = normalizeSessionTombstones(tombstones, at);
+    out[sessionId] = at;
+    return out;
+}
+
+/** True when a tombstone exists for the session that is at least as new as its last change. */
+export function isSessionTombstoned(session: Session | null | undefined, id: string, tombstones: SessionTombstones): boolean {
+    const at = tombstones[id];
+    if (!at) return false;
+    return at >= getSessionModified(session);
+}
+
 /**
  * Union-merge two ordered id lists: primary order first, then any secondary ids
  * not already seen, then any remaining ids present in validMap. Ids absent from
@@ -219,6 +268,7 @@ export function buildSyncedSessionPayload(data: Partial<SessionData>): Record<st
         groupOrder: Array.isArray(data.groupOrder) ? cloneJson(data.groupOrder) : [],
         sessionGroups: cloneJson(data.sessionGroups || {}),
         activeGroupId: data.activeGroupId ?? null,
+        deletedSessions: normalizeSessionTombstones(data.deletedSessions),
     };
 }
 

@@ -22,6 +22,7 @@ import { setupStatusBar } from './statusbar-controller';
 import { WorkspaceMgrSettingTab, type SettingsHost } from './settings-tab';
 import { RenameModal, UnsavedSwitchModal, ConfirmModal, SessionManagerModal } from './modals';
 import { renameSessionWithPrompt, deleteSessionWithPrompt } from './session-list-actions';
+import { addGroupedSessionItems, openWorkspaceMenu } from './workspace-menu';
 import type { Group, Session, SessionData } from './core/types';
 
 export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
@@ -114,7 +115,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.frontmatterCtl.registerFrontmatterListeners();
 
         this.addRibbonIcon('panels-top-left', i18n.L.ribbonTooltip, (evt) => {
-            this.buildWorkspaceRibbonMenu().showAtMouseEvent(evt as MouseEvent);
+            openWorkspaceMenu(this as never, evt);
         });
 
         this.addSettingTab(new WorkspaceMgrSettingTab(this.app, this));
@@ -288,87 +289,6 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     }
 
     // ------------------------------------------------------------------
-    // Ribbon: Group -> Workspace quick switch menu
-    // ------------------------------------------------------------------
-    private buildWorkspaceRibbonMenu(): Menu {
-        const L = i18n.L;
-        const menu = new Menu();
-        const byName = (a: Session, b: Session): number => a.name.localeCompare(b.name);
-        const addSessionItem = (session: Session): void => {
-            menu.addItem((item) =>
-                item
-                    .setTitle(session.name)
-                    .setChecked(session.id === this.data.activeSessionId)
-                    .onClick(() => void this.session.switchSession(session.id)),
-            );
-        };
-
-        const addManageLayoutsItem = (): void => {
-            menu.addSeparator();
-            menu.addItem((item) =>
-                item
-                    .setTitle(L.modalTitle)
-                    .setIcon('list')
-                    .onClick(() => new SessionManagerModal(this.app, this as never).open()),
-            );
-        };
-
-        const addFooterActions = (): void => {
-            menu.addSeparator();
-            menu.addItem((item) =>
-                item
-                    .setTitle(L.statusBarActionSaveSession)
-                    .setIcon('save')
-                    .onClick(() => void this.session.saveActiveSession()),
-            );
-            menu.addItem((item) =>
-                item
-                    .setTitle(L.cmdSaveCurrentLayoutToSession)
-                    .setIcon('save-all')
-                    .onClick((evt) => this.openSaveCurrentLayoutMenu(evt)),
-            );
-            menu.addItem((item) =>
-                item
-                    .setTitle(L.modalTitle)
-                    .setIcon('list')
-                    .onClick(() => new SessionManagerModal(this.app, this as never).open()),
-            );
-        };
-
-        const allSessions = this.session.getOrderedSessions();
-        if (allSessions.length === 0) {
-            menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
-            addManageLayoutsItem();
-            return menu;
-        }
-
-        if (!this.session.isGroupFeatureEnabled()) {
-            for (const session of allSessions.slice().sort(byName)) addSessionItem(session);
-            addFooterActions();
-            return menu;
-        }
-
-        const sessionGroups = (this.data.sessionGroups || {}) as Record<string, string[]>;
-        const ungrouped = allSessions
-            .filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0)
-            .sort(byName);
-        for (const session of ungrouped) addSessionItem(session);
-
-        let wroteBlock = ungrouped.length > 0;
-        const groups = this.session.getOrderedGroups().slice().sort((a, b) => a.name.localeCompare(b.name));
-        for (const group of groups) {
-            const groupSessions = this.session.getOrderedSessionsForGroup(group.id).slice().sort(byName);
-            if (groupSessions.length === 0) continue;
-            if (wroteBlock) menu.addSeparator();
-            menu.addItem((item) => item.setTitle(group.name).setIcon('folder').setDisabled(true));
-            for (const session of groupSessions) addSessionItem(session);
-            wroteBlock = true;
-        }
-        addFooterActions();
-        return menu;
-    }
-
-    // ------------------------------------------------------------------
     // Commands
     // ------------------------------------------------------------------
     private registerCommands(): void {
@@ -534,45 +454,37 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         });
     }
 
-    /** Build (or open) a picker menu of every non-active session, to overwrite with the current layout. */
-    private populateSaveCurrentLayoutMenu(menu: Menu): void {
-        const L = i18n.L;
-        const others = this.session
-            .getOrderedSessions()
-            .filter((s) => s.id !== this.data.activeSessionId)
-            .sort((a, b) => a.name.localeCompare(b.name));
-        if (others.length === 0) {
-            menu.addItem((item) => item.setTitle(L.ribbonNoOtherWorkspaces).setDisabled(true));
-            return;
-        }
-        for (const session of others) {
-            menu.addItem((item) =>
-                item
-                    .setTitle(session.name)
-                    .setIcon('save')
-                    .onClick(() => this.confirmOverwriteSessionWithCurrentLayout(session.id)),
-            );
-        }
-    }
-
-    /** Open a picker menu of every non-active session; picking one overwrites it with the current layout. */
+    /**
+     * Open a picker of every non-active session, grouped like the workspace menu;
+     * picking one overwrites it with the current layout and makes it the active
+     * session, so the status bar names it.
+     */
     openSaveCurrentLayoutMenu(event?: unknown): void {
         const menu = new Menu();
-        this.populateSaveCurrentLayoutMenu(menu);
+        const count = addGroupedSessionItems(menu, this as never, {
+            excludeId: this.data.activeSessionId,
+            icon: 'save',
+            onPick: (session) => this.confirmOverwriteSessionWithCurrentLayout(session.id, { activate: true }),
+        });
+        if (count === 0) menu.addItem((item) => item.setTitle(i18n.L.ribbonNoOtherWorkspaces).setDisabled(true));
         const evt = event as MouseEvent | undefined;
         if (evt && typeof evt.clientX === 'number') menu.showAtMouseEvent(evt);
         else menu.showAtPosition({ x: 0, y: 0 });
     }
 
     /** Confirm overwriting a session with the current layout. */
-    confirmOverwriteSessionWithCurrentLayout(sessionId: string, options?: { onSaved?: (s: Session) => void }): boolean {
+    confirmOverwriteSessionWithCurrentLayout(
+        sessionId: string,
+        options?: { onSaved?: (s: Session) => void; activate?: boolean },
+    ): boolean {
         const session = this.data.sessions[sessionId];
         if (!session) return false;
         new ConfirmModal(
             this.app,
             i18n.L.confirmOverwriteSessionWithCurrentLayout(session.name),
             () => {
-                void this.session.overwriteSessionWithCurrentLayout(sessionId).then((saved) => {
+                const activate = !!(options && options.activate);
+                void this.session.overwriteSessionWithCurrentLayout(sessionId, { activate }).then((saved) => {
                     if (saved && options && options.onSaved) options.onSaved(session);
                 });
             },

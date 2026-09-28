@@ -36,6 +36,8 @@ export interface SessionData {
     groups: Record<string, Group>;
     groupOrder: string[];
     activeGroupId: string | null;
+    /** Deleted session id -> deletion time; synced so deletes reach every device. */
+    deletedSessions?: Record<string, number>;
 
     autoSaveOnSwitch: boolean;
     warnOnUnsavedSwitch: boolean;

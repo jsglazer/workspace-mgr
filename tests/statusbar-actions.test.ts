@@ -18,7 +18,7 @@ vi.mock('../src/modals', () => ({
         open(): void {}
     },
 }));
-vi.mock('../src/session-context-actions', () => ({ openSessionContextMenu: () => {} }));
+vi.mock('../src/workspace-menu', () => ({ openWorkspaceMenu: () => {} }));
 vi.mock('../src/settings-context-menu', () => ({ openSettingsContextMenu: () => {} }));
 
 import * as statusBarActions from '../src/statusbar-actions';

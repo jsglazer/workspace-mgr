@@ -3,7 +3,7 @@
 import { App, Notice } from 'obsidian';
 import * as i18n from './i18n';
 import { SessionManagerModal, HistoryModal, ConfirmModal } from './modals';
-import { openSessionContextMenu } from './session-context-actions';
+import { openWorkspaceMenu } from './workspace-menu';
 import { openSettingsContextMenu } from './settings-context-menu';
 import type { Session } from './core/types';
 
@@ -37,26 +37,9 @@ function resolveLabel(L: Record<string, unknown>, labelKey: string): string {
     return typeof label === 'function' ? (label as () => string)() : (label as string);
 }
 
+// The status bar opens the same workspace menu as the ribbon icon.
 function openSessionMenuAction(plugin: StatusBarActionPlugin, event: unknown): void {
-    const sess = plugin.getActiveSession();
-    if (!sess) return;
-    openSessionContextMenu({
-        plugin: plugin as never,
-        app: plugin.app,
-        session: sess,
-        isActive: true,
-        event,
-        showSaveAs: true,
-        showSwitch: false,
-        showRemoveFromGroup: false,
-        showMoveToGroup: plugin.isGroupFeatureEnabled() && plugin.getOrderedGroups().length > 0,
-        showCustomizeClicks: true,
-        showManageLayouts: true,
-        onManageLayouts: () => new SessionManagerModal(plugin.app as never, plugin as never).open(),
-        forceDeleteConfirm: true,
-        notifyDeleted: false,
-        onSessionsChanged: () => plugin.updateStatusBar(),
-    });
+    openWorkspaceMenu(plugin as never, event);
 }
 
 function openSettingsMenuAction(plugin: StatusBarActionPlugin, event: unknown): void {

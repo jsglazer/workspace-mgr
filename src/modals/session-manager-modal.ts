@@ -122,6 +122,10 @@ export default class SessionManagerModal extends Modal {
 
         this.navKeyHandler = (e: KeyboardEvent) => {
             if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+            // A modal opened on top (e.g. the Delete confirmation) owns the
+            // keyboard; otherwise its Enter would also switch to the row selected
+            // here, racing the very delete being confirmed.
+            if (!this.isTopmostModal()) return;
             if (this.sessions.length === 0) return;
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -142,6 +146,11 @@ export default class SessionManagerModal extends Modal {
             }
         };
         document.addEventListener('keydown', this.navKeyHandler, true);
+    }
+
+    private isTopmostModal(): boolean {
+        const containers = document.querySelectorAll('.modal-container');
+        return containers.length === 0 || containers[containers.length - 1] === this.containerEl;
     }
 
     private deleteSession(session: Session): void {
