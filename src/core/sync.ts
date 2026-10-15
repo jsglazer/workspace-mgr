@@ -115,22 +115,29 @@ function sameIdList(a: string[] | undefined, b: string[] | undefined): boolean {
 }
 
 /**
- * Decide whose order leads a merge (three-way, against the last stored
- * baseline). The side that alone changed the order since the baseline wins; when
- * both changed it, the later explicit reorder (its `*OrderModified` stamp) wins.
- * Ties go to the external copy, matching the old behaviour.
+ * Decide whose order leads a merge. The later explicit reorder (its
+ * `*OrderModified` stamp) wins outright: the baseline is the copy this device
+ * last wrote, so once a local reorder is saved the local side looks unchanged
+ * and a stale incoming copy looks like the only change — comparing against the
+ * baseline alone let that stale copy undo the reorder. Only when the stamps tie
+ * (neither side reordered, or a peer too old to send stamps) does the three-way
+ * check decide: the side that alone changed the order since the baseline wins.
+ * Remaining ties go to the external copy, matching the old behaviour.
  */
 export function pickOrderWinner(
     local: { order: string[] | undefined; modified: number },
     external: { order: string[] | undefined; modified: number },
     baseline: string[] | undefined,
 ): 'local' | 'external' {
+    const localStamp = local.modified || 0;
+    const externalStamp = external.modified || 0;
+    if (localStamp > externalStamp) return 'local';
+    if (externalStamp > localStamp) return 'external';
     const hasBaseline = Array.isArray(baseline);
     const localChanged = !hasBaseline || !sameIdList(local.order, baseline);
     const externalChanged = !hasBaseline || !sameIdList(external.order, baseline);
     if (localChanged && !externalChanged) return 'local';
-    if (externalChanged && !localChanged) return 'external';
-    return (local.modified || 0) > (external.modified || 0) ? 'local' : 'external';
+    return 'external';
 }
 
 /**

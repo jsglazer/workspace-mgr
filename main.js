@@ -10306,12 +10306,15 @@ function sameIdList(a, b) {
   return true;
 }
 function pickOrderWinner(local, external, baseline) {
+  const localStamp = local.modified || 0;
+  const externalStamp = external.modified || 0;
+  if (localStamp > externalStamp) return "local";
+  if (externalStamp > localStamp) return "external";
   const hasBaseline = Array.isArray(baseline);
   const localChanged = !hasBaseline || !sameIdList(local.order, baseline);
   const externalChanged = !hasBaseline || !sameIdList(external.order, baseline);
   if (localChanged && !externalChanged) return "local";
-  if (externalChanged && !localChanged) return "external";
-  return (local.modified || 0) > (external.modified || 0) ? "local" : "external";
+  return "external";
 }
 function mergeOrderWithWinner(winner, loser, validMap, keepIds = []) {
   const w = Array.isArray(winner) ? winner : [];

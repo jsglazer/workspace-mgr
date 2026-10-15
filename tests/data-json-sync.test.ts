@@ -243,6 +243,65 @@ describe('applyExternalDataJson: reorders survive a Sync merge', () => {
         expect(svc.data.sessions.a.name).toBe('A edited');
     });
 
+    test('a stale incoming copy does not undo a local group reorder that was already saved', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        // The user reorders and the plugin saves: the baseline now holds the new order.
+        svc.data.groupOrder = ['g3', '__all__', 'g1', 'g2'];
+        svc.data.groupOrderModified = 1000;
+        svc.recordSessionStorageState(2, 2, svc.data);
+
+        // Another device, still on the old order and with an older stamp, pushes its data.json.
+        svc.applyExternalDataJson({
+            sessions: { a: session('a', 'A edited', 50), b: session('b', 'B', 5) },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['__all__', 'g1', 'g2', 'g3'],
+            groupOrderModified: 500,
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.groupOrder).toEqual(['g3', '__all__', 'g1', 'g2']);
+        expect(svc.data.sessions.a.name).toBe('A edited');
+    });
+
+    test('a saved local group reorder survives a copy from a peer that sends no stamps or Ungrouped', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        svc.data.groupOrder = ['g2', 'g1', '__all__', 'g3'];
+        svc.data.groupOrderModified = 1000;
+        svc.recordSessionStorageState(2, 2, svc.data);
+
+        // A device still on 1.0.21: no groupOrderModified, and `__all__` dropped by its merge.
+        svc.applyExternalDataJson({
+            sessions: { a: session('a', 'A edited', 50), b: session('b', 'B', 5) },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['g1', 'g2', 'g3'],
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.groupOrder).toEqual(['g2', 'g1', '__all__', 'g3']);
+    });
+
+    test('a stale incoming copy does not undo a saved local session reorder', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        svc.data.sessionOrder = ['b', 'a'];
+        svc.data.sessionOrderModified = 1000;
+        svc.recordSessionStorageState(2, 2, svc.data);
+
+        svc.applyExternalDataJson({
+            sessions: { a: session('a', 'A edited', 50), b: session('b', 'B', 5) },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['__all__', 'g1', 'g2', 'g3'],
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.sessionOrder).toEqual(['b', 'a']);
+    });
+
     test('a stale incoming copy does not undo a local session reorder', () => {
         const { svc } = makeService();
         baseState(svc);
