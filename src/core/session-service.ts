@@ -1328,6 +1328,41 @@ export class SessionService {
         return this.persistData().then(() => true);
     }
 
+    /**
+     * Move one entry of the group display order by `offset` places. `groupId`
+     * is a group id or `'__all__'`, the Ungrouped block, which reorders like any
+     * group. `visibleIds` (a subsequence of the order) limits the move to the
+     * blocks a view actually shows, so it steps past a hidden neighbour (e.g. an
+     * empty Ungrouped block) instead of silently swapping with it. Returns false
+     * when the move would leave the list.
+     */
+    moveGroupInOrder(groupId: string, offset: number, visibleIds?: string[]): Promise<boolean> {
+        const order = this.getOrderedGroupTabIds();
+        const visible = visibleIds ? visibleIds.filter((id) => order.indexOf(id) !== -1) : order;
+        const visIdx = visible.indexOf(groupId);
+        const neighbour = visible[visIdx + offset];
+        if (visIdx === -1 || offset === 0 || neighbour === undefined) return Promise.resolve(false);
+        order.splice(order.indexOf(groupId), 1);
+        const at = order.indexOf(neighbour);
+        order.splice(offset < 0 ? at : at + 1, 0, groupId);
+        return this.setGroupTabOrder(order).then((changed) => {
+            if (changed) {
+                this.syncSessionCommands();
+                this.updateStatusBar();
+            }
+            return changed;
+        });
+    }
+
+    /** Reset the group display order to Ungrouped first, then the groups A–Z. */
+    sortGroupsByName(): Promise<boolean> {
+        const sorted = this.getOrderedGroups()
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((g) => g.id);
+        return this.setGroupTabOrder(['__all__', ...sorted]);
+    }
+
     getActiveGroup(): Group | null {
         if (!this.isGroupFeatureEnabled()) return null;
         if (!this.data.activeGroupId) return null;

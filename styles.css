@@ -1169,3 +1169,25 @@ body.wsmgr-session-list-dragging * {
 .wsmgr-customize-clicks .setting-item {
     padding: 8px 0;
 }
+
+/* ── Workspace menu: highlighted top actions ── */
+
+.menu-item.wsmgr-menu-save,
+.menu-item.wsmgr-menu-save .menu-item-icon {
+    color: var(--color-orange);
+}
+
+.menu-item.wsmgr-menu-reload,
+.menu-item.wsmgr-menu-reload .menu-item-icon {
+    color: var(--color-blue);
+}
+
+.wsmgr-manager-group-actions .wsmgr-manager-item-icon.is-disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.wsmgr-settings-ungrouped {
+    font-style: italic;
+    color: var(--text-muted);
+}

@@ -13,6 +13,8 @@ interface ManagerPlugin {
     getOrderedSessions(): Session[];
     getOrderedSessionsForGroup(groupId: string | null): Session[];
     getOrderedGroups(): Group[];
+    getOrderedGroupTabIds(): string[];
+    moveGroupInOrder(groupId: string, offset: number, visibleIds?: string[]): Promise<boolean>;
     isGroupFeatureEnabled(): boolean;
     createGroupValidated(name: string): Promise<string | false>;
     renameGroupValidated(groupId: string, newName: string): Promise<boolean>;
@@ -27,6 +29,8 @@ interface ManagerPlugin {
 }
 
 const UNGROUPED_KEY = '__ungrouped__';
+/** The `groupOrder` id that stands for the Ungrouped block. */
+const UNGROUPED_ORDER_ID = '__all__';
 
 /**
  * Session manager overlay: collapsible group sections (default expanded),
@@ -362,7 +366,7 @@ export default class SessionManagerModal extends Modal {
         container: HTMLElement,
         collapseKey: string,
         name: string,
-        options: { group?: Group } = {},
+        options: { group?: Group; orderId?: string; visibleOrder?: string[]; canMoveUp?: boolean; canMoveDown?: boolean } = {},
     ): void {
         const L = i18n.L;
         const header = container.createDiv({ cls: 'wsmgr-manager-group-header' });
@@ -387,8 +391,26 @@ export default class SessionManagerModal extends Modal {
         });
 
         const group = options.group;
-        if (group) {
-            const actions = header.createDiv({ cls: 'wsmgr-manager-group-actions' });
+        const orderId = options.orderId;
+        const actions = group || orderId ? header.createDiv({ cls: 'wsmgr-manager-group-actions' }) : null;
+        if (actions && orderId) {
+            const addMoveBtn = (icon: string, label: string, offset: number, enabled: boolean): void => {
+                const btn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
+                setIcon(btn, icon);
+                btn.setAttribute('aria-label', label);
+                if (!enabled) {
+                    btn.addClass('is-disabled');
+                    btn.disabled = true;
+                }
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    void this.plugin.moveGroupInOrder(orderId, offset, options.visibleOrder).then(() => this.renderList());
+                });
+            };
+            addMoveBtn('arrow-up', L.groupMoveUp, -1, !!options.canMoveUp);
+            addMoveBtn('arrow-down', L.groupMoveDown, 1, !!options.canMoveDown);
+        }
+        if (actions && group) {
             const renameBtn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
             setIcon(renameBtn, 'pencil');
             renameBtn.setAttribute('aria-label', L.groupContextRename);
@@ -444,18 +466,26 @@ export default class SessionManagerModal extends Modal {
             if (sessions.length === 0) this.listEl.createEl('p', { text: L.noSession });
         } else {
             const ungrouped = this.sortByName(this.getUngroupedSessions().filter((s) => this.matchesFilter(s)));
-            if (ungrouped.length > 0) {
-                const section = this.listEl.createDiv({ cls: 'wsmgr-manager-group-section' });
-                this.renderGroupHeader(section, UNGROUPED_KEY, L.ribbonUngrouped);
-                if (!this.collapsed.has(UNGROUPED_KEY)) {
-                    const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
-                    for (const session of ungrouped) this.renderSessionRow(body, session);
+            const groupsById: Record<string, Group> = {};
+            for (const group of this.plugin.getOrderedGroups()) groupsById[group.id] = group;
+            // Blocks in the saved group order; Ungrouped takes its own place in it.
+            // An empty Ungrouped block is not shown, so moves step over it.
+            const order = this.plugin
+                .getOrderedGroupTabIds()
+                .filter((id) => (id === UNGROUPED_ORDER_ID ? ungrouped.length > 0 : !!groupsById[id]));
+            order.forEach((id, idx) => {
+                const moveOptions = { orderId: id, visibleOrder: order, canMoveUp: idx > 0, canMoveDown: idx < order.length - 1 };
+                const section = this.listEl!.createDiv({ cls: 'wsmgr-manager-group-section' });
+                if (id === UNGROUPED_ORDER_ID) {
+                    this.renderGroupHeader(section, UNGROUPED_KEY, L.ribbonUngrouped, moveOptions);
+                    if (!this.collapsed.has(UNGROUPED_KEY)) {
+                        const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
+                        for (const session of ungrouped) this.renderSessionRow(body, session);
+                    }
+                    return;
                 }
-            }
-
-            for (const group of this.plugin.getOrderedGroups()) {
-                const section = this.listEl.createDiv({ cls: 'wsmgr-manager-group-section' });
-                this.renderGroupHeader(section, group.id, group.name, { group });
+                const group = groupsById[id];
+                this.renderGroupHeader(section, group.id, group.name, { group, ...moveOptions });
                 if (!this.collapsed.has(group.id)) {
                     const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
                     const groupSessions = this.sortByName(
@@ -467,7 +497,7 @@ export default class SessionManagerModal extends Modal {
                         for (const session of groupSessions) this.renderSessionRow(body, session);
                     }
                 }
-            }
+            });
 
             if (this.sessions.length === 0 && ungrouped.length === 0 && this.plugin.getOrderedGroups().length === 0) {
                 this.listEl.createEl('p', { text: L.noSession });

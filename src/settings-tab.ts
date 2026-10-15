@@ -205,9 +205,46 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                 })
                 .addButton((b) => b.setButtonText(L.settingsGroupCreateBtn).onClick(() => void createGroupFromInput()));
 
-            for (const group of this.host.session.getOrderedGroups()) {
-                new Setting(containerEl)
-                    .setName(group.name)
+            new Setting(containerEl)
+                .setName(L.settingsGroupOrder)
+                .setDesc(L.settingsGroupOrderDesc)
+                .addButton((b) =>
+                    b.setButtonText(L.settingsGroupSortAZ).onClick(async () => {
+                        await this.host.session.sortGroupsByName();
+                        this.display();
+                    }),
+                );
+
+            const groupsById: Record<string, { id: string; name: string }> = {};
+            for (const group of this.host.session.getOrderedGroups()) groupsById[group.id] = group;
+            const order = this.host.session.getOrderedGroupTabIds();
+            const addMoveButtons = (setting: Setting, id: string, idx: number): Setting =>
+                setting
+                    .addExtraButton((b) => {
+                        b.setIcon('arrow-up').setTooltip(L.groupMoveUp).setDisabled(idx === 0);
+                        b.onClick(async () => {
+                            await this.host.session.moveGroupInOrder(id, -1);
+                            this.display();
+                        });
+                    })
+                    .addExtraButton((b) => {
+                        b.setIcon('arrow-down').setTooltip(L.groupMoveDown).setDisabled(idx === order.length - 1);
+                        b.onClick(async () => {
+                            await this.host.session.moveGroupInOrder(id, 1);
+                            this.display();
+                        });
+                    });
+
+            order.forEach((id, idx) => {
+                if (id === '__all__') {
+                    const row = new Setting(containerEl).setName(L.ribbonUngrouped);
+                    row.nameEl.addClass('wsmgr-settings-ungrouped');
+                    addMoveButtons(row, id, idx);
+                    return;
+                }
+                const group = groupsById[id];
+                if (!group) return;
+                addMoveButtons(new Setting(containerEl).setName(group.name), id, idx)
                     .addExtraButton((b) =>
                         b.setIcon('pencil').setTooltip(L.groupContextRename).onClick(() => {
                             new RenameModal(
@@ -235,7 +272,7 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                             }).open();
                         }),
                     );
-            }
+            });
         }
 
         // --- Ribbon sync ---

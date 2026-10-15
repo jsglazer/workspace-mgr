@@ -302,6 +302,11 @@ export interface Strings {
     groupContextRename: string;
     groupContextDelete: string;
     groupContextDuplicate: string;
+    groupMoveUp: string;
+    groupMoveDown: string;
+    settingsGroupOrder: string;
+    settingsGroupOrderDesc: string;
+    settingsGroupSortAZ: string;
     groupDuplicated: LocaleFn;
     contextSwitchSession: string;
     contextRenameSession: string;

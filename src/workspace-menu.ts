@@ -1,7 +1,7 @@
 // The one workspace menu, shared by the ribbon icon and the status bar so both
-// look and behave identically: the grouped session list (click to switch) on
-// top, then every action on the active session, then customization and the
-// manager. Also provides the grouped session list on its own, which the
+// look and behave identically: Save (orange) and Reload (blue) on top, then the
+// grouped session list (click to switch), then the remaining actions on the
+// active session, then customization and the manager. Also provides the grouped session list on its own, which the
 // "Save current layout to session..." picker reuses so it is arranged the same.
 import { App, Menu } from 'obsidian';
 import * as i18n from './i18n';
@@ -15,6 +15,7 @@ export interface WorkspaceMenuPlugin {
     getActiveSession(): Session | null;
     getOrderedSessions(): Session[];
     getOrderedGroups(): Group[];
+    getOrderedGroupTabIds(): string[];
     getOrderedSessionsForGroup(groupId: string | null): Session[];
     isGroupFeatureEnabled(): boolean;
     switchSession(sessionId: string): Promise<boolean>;
@@ -33,12 +34,18 @@ export interface SessionListOptions {
 
 const byName = (a: { name: string }, b: { name: string }): number => a.name.localeCompare(b.name);
 
+/** The `groupOrder` id that stands for the Ungrouped block. */
+export const UNGROUPED_ORDER_ID = '__all__';
+
 /**
- * Add the sessions to `menu`, arranged as the workspace menu shows them:
- * ungrouped sessions first, then one block per group under a disabled folder
- * header, everything sorted by name. Returns how many sessions were added.
+ * Add the sessions to `menu`, arranged as the workspace menu shows them: one
+ * block per group in the saved group order (the Ungrouped block takes its own
+ * place in that order), each group under a disabled folder header, sessions
+ * sorted by name. Ungrouped gets a header only when a group block precedes it.
+ * Returns how many sessions were added.
  */
 export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, options: SessionListOptions): number {
+    const L = i18n.L;
     const activeId = plugin.data.activeSessionId;
     const keep = (s: Session): boolean => s.id !== options.excludeId;
     let added = 0;
@@ -58,11 +65,26 @@ export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, 
     }
 
     const sessionGroups = plugin.data.sessionGroups || {};
-    const ungrouped = allSessions.filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0).sort(byName);
-    for (const session of ungrouped) addSession(session);
+    const groupsById: Record<string, Group> = {};
+    for (const group of plugin.getOrderedGroups()) groupsById[group.id] = group;
 
-    let wroteBlock = ungrouped.length > 0;
-    for (const group of plugin.getOrderedGroups().slice().sort(byName)) {
+    let wroteBlock = false;
+    for (const id of plugin.getOrderedGroupTabIds()) {
+        if (id === UNGROUPED_ORDER_ID) {
+            const ungrouped = allSessions
+                .filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0)
+                .sort(byName);
+            if (ungrouped.length === 0) continue;
+            if (wroteBlock) {
+                menu.addSeparator();
+                menu.addItem((item) => item.setTitle(L.ribbonUngrouped).setIcon('folder-open').setDisabled(true));
+            }
+            for (const session of ungrouped) addSession(session);
+            wroteBlock = true;
+            continue;
+        }
+        const group = groupsById[id];
+        if (!group) continue;
         const groupSessions = plugin.getOrderedSessionsForGroup(group.id).filter(keep).sort(byName);
         if (groupSessions.length === 0) continue;
         if (wroteBlock) menu.addSeparator();
@@ -97,12 +119,6 @@ export function buildWorkspaceMenu(plugin: WorkspaceMenuPlugin): Menu {
     const L = i18n.L;
     const menu = new Menu();
 
-    const count = addGroupedSessionItems(menu, plugin, {
-        checkActive: true,
-        onPick: (session) => plugin.switchSession(session.id),
-    });
-    if (count === 0) menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
-
     const active = plugin.getActiveSession();
     const actions = active
         ? createSessionContextMenuOptions({
@@ -115,21 +131,39 @@ export function buildWorkspaceMenu(plugin: WorkspaceMenuPlugin): Menu {
               onSessionsChanged: () => plugin.updateStatusBar(),
           })
         : null;
-    const add = (title: string, icon: string, onClick: (evt: MouseEvent | KeyboardEvent) => unknown): void => {
-        menu.addItem((item) =>
+    const add = (
+        title: string,
+        icon: string,
+        onClick: (evt: MouseEvent | KeyboardEvent) => unknown,
+        cls?: string,
+    ): void => {
+        menu.addItem((item) => {
             item
                 .setTitle(title)
                 .setIcon(icon)
-                .onClick((evt) => void onClick(evt)),
-        );
+                .onClick((evt) => void onClick(evt));
+            // MenuItem.dom is not in the public typings but exists at runtime.
+            if (cls) (item as unknown as { dom?: HTMLElement }).dom?.classList.add(cls);
+        });
     };
+
+    // The two most-used actions on the active session lead the menu.
+    if (actions) {
+        add(L.statusBarActionSaveSession, 'save', () => actions.onSave(), 'wsmgr-menu-save');
+        add(L.statusBarActionReloadWithoutSaving, 'refresh-cw', () => actions.onReload(), 'wsmgr-menu-reload');
+        menu.addSeparator();
+    }
+
+    const count = addGroupedSessionItems(menu, plugin, {
+        checkActive: true,
+        onPick: (session) => plugin.switchSession(session.id),
+    });
+    if (count === 0) menu.addItem((item) => item.setTitle(L.ribbonWorkspacesEmpty).setDisabled(true));
 
     if (actions) {
         menu.addSeparator();
-        add(L.statusBarActionSaveSession, 'save', () => actions.onSave());
         add(L.cmdSaveCurrentLayoutToSession, 'save-all', (evt) => plugin.openSaveCurrentLayoutMenu(evt));
         add(L.cmdSaveAs, 'copy-plus', () => actions.onSaveAs());
-        add(L.statusBarActionReloadWithoutSaving, 'refresh-cw', () => actions.onReload());
 
         menu.addSeparator();
         add(L.contextRenameSession, 'pencil', () => actions.onRename());
