@@ -304,6 +304,10 @@ export interface Strings {
     groupContextDuplicate: string;
     groupMoveUp: string;
     groupMoveDown: string;
+    sessionMoveUp: string;
+    sessionMoveDown: string;
+    settingsSessionOrder: string;
+    settingsSessionOrderDesc: string;
     settingsGroupOrder: string;
     settingsGroupOrderDesc: string;
     settingsGroupSortAZ: string;

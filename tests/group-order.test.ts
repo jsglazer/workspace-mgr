@@ -134,6 +134,42 @@ describe('group order', () => {
     });
 });
 
+describe('session order', () => {
+    const twoInZeta = {
+        sessionGroups: { s2: ['g1'], s3: ['g1'], s4: ['g1'] },
+        sessionOrder: ['s4', 's1', 's2', 's3'],
+    };
+
+    test('moves a session within its block past outside sessions', async () => {
+        const { svc } = createService(twoInZeta);
+        // Zeta's block is s4, s2, s3; s1 (ungrouped) sits between them in the full order.
+        expect(await svc.moveSessionInOrder('s2', -1, ['s4', 's2', 's3'])).toBe(true);
+        expect(svc.data.sessionOrder).toEqual(['s2', 's1', 's4', 's3']);
+        expect(await svc.moveSessionInOrder('s2', 1, ['s2', 's4', 's3'])).toBe(true);
+        expect(svc.data.sessionOrder).toEqual(['s4', 's1', 's2', 's3']);
+    });
+
+    test('refuses moves off either end of the block', async () => {
+        const { svc, persists } = createService(twoInZeta);
+        expect(await svc.moveSessionInOrder('s4', -1, ['s4', 's2', 's3'])).toBe(false);
+        expect(await svc.moveSessionInOrder('s3', 1, ['s4', 's2', 's3'])).toBe(false);
+        expect(persists()).toBe(0);
+    });
+
+    test('sort A–Z orders every session by name', async () => {
+        const { svc } = createService(twoInZeta);
+        await svc.sortSessionsByName();
+        expect(svc.data.sessionOrder).toEqual(['s3', 's4', 's2', 's1']);
+    });
+
+    test('menu lists a block in the saved session order, not A–Z', () => {
+        const { svc } = createService(twoInZeta);
+        const menu = new Menu() as unknown as { entries: Entry[] };
+        addGroupedSessionItems(menu as never, menuPlugin(svc) as never, { onPick: () => {} });
+        expect(titles(menu.entries)).toEqual(['Loose', '---', 'Zeta', 'InMid', 'InZeta', 'InAlpha']);
+    });
+});
+
 describe('workspace menu', () => {
     test('Save and Reload lead the menu with their colour classes', () => {
         const { svc } = createService();

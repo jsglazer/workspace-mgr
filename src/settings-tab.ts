@@ -275,6 +275,16 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
             });
         }
 
+        new Setting(containerEl)
+            .setName(L.settingsSessionOrder)
+            .setDesc(L.settingsSessionOrderDesc)
+            .addButton((b) =>
+                b.setButtonText(L.settingsGroupSortAZ).onClick(async () => {
+                    await this.host.session.sortSessionsByName();
+                    this.host.updateStatusBar?.();
+                }),
+            );
+
         // --- Ribbon sync ---
         new Setting(containerEl).setName('Ribbon').setHeading();
         {

@@ -336,6 +336,9 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     moveGroupInOrder(groupId: string, offset: number, visibleIds?: string[]): Promise<boolean> {
         return this.session.moveGroupInOrder(groupId, offset, visibleIds);
     }
+    moveSessionInOrder(sessionId: string, offset: number, visibleIds: string[]): Promise<boolean> {
+        return this.session.moveSessionInOrder(sessionId, offset, visibleIds);
+    }
     getOrderedSessionsForGroup(groupId: string | null): Session[] {
         return this.session.getOrderedSessionsForGroup(groupId);
     }

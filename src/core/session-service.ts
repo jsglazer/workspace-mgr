@@ -210,6 +210,34 @@ export class SessionService {
         return this.persistData().then(() => true);
     }
 
+    /**
+     * Move a session one block-neighbour up or down in the saved session order.
+     * `visibleIds` is the block the view shows (e.g. one group's sessions), so
+     * the session swaps places with its visible neighbour and every session
+     * outside the block keeps its slot. Returns false at either end.
+     */
+    moveSessionInOrder(sessionId: string, offset: number, visibleIds: string[]): Promise<boolean> {
+        const visible = visibleIds.filter((id) => !!this.data.sessions[id]);
+        const from = visible.indexOf(sessionId);
+        const to = from + offset;
+        if (from === -1 || offset === 0 || to < 0 || to >= visible.length) return Promise.resolve(false);
+        this.syncSessionOrder();
+        visible.splice(from, 1);
+        visible.splice(to, 0, sessionId);
+        return this.setSessionOrderFromVisible(visible).then((changed) => {
+            if (changed) this.updateStatusBar();
+            return changed;
+        });
+    }
+
+    /** Reset the saved session order to A–Z by name. */
+    sortSessionsByName(): Promise<boolean> {
+        const sessions = this.data.sessions;
+        this.syncSessionOrder();
+        const sorted = this.data.sessionOrder.slice().sort((a, b) => sessions[a].name.localeCompare(sessions[b].name));
+        return this.setSessionOrderFromVisible(sorted);
+    }
+
     getSessionIndex(sessions: Session[], sessionId: string | null): number {
         const idx = this.findSessionIndex(sessions, sessionId);
         return idx === -1 ? 0 : idx;

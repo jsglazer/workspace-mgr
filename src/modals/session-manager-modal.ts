@@ -15,6 +15,7 @@ interface ManagerPlugin {
     getOrderedGroups(): Group[];
     getOrderedGroupTabIds(): string[];
     moveGroupInOrder(groupId: string, offset: number, visibleIds?: string[]): Promise<boolean>;
+    moveSessionInOrder(sessionId: string, offset: number, visibleIds: string[]): Promise<boolean>;
     isGroupFeatureEnabled(): boolean;
     createGroupValidated(name: string): Promise<string | false>;
     renameGroupValidated(groupId: string, newName: string): Promise<boolean>;
@@ -266,10 +267,6 @@ export default class SessionManagerModal extends Modal {
         return !this.filter || session.name.toLowerCase().includes(this.filter);
     }
 
-    private sortByName(sessions: Session[]): Session[] {
-        return sessions.slice().sort((a, b) => a.name.localeCompare(b.name));
-    }
-
     private getUngroupedSessions(): Session[] {
         const sessionGroups = this.plugin.data.sessionGroups || {};
         return this.plugin.getOrderedSessions().filter((s) => {
@@ -278,7 +275,13 @@ export default class SessionManagerModal extends Modal {
         });
     }
 
-    private renderSessionRow(container: HTMLElement, session: Session): void {
+    /** Render each session of one block (in saved order) with ↑/↓ buttons that move it within that block. */
+    private renderSessionBlock(container: HTMLElement, sessions: Session[]): void {
+        const ids = sessions.map((s) => s.id);
+        sessions.forEach((session, idx) => this.renderSessionRow(container, session, ids, idx));
+    }
+
+    private renderSessionRow(container: HTMLElement, session: Session, blockIds: string[], blockIdx: number): void {
         const L = i18n.L;
         const row = container.createDiv({ cls: 'wsmgr-manager-item' });
         if (session.id === this.plugin.data.activeSessionId) row.addClass('is-active');
@@ -312,6 +315,21 @@ export default class SessionManagerModal extends Modal {
             e.stopPropagation();
             void this.plugin.duplicateSession(session.id).then(() => this.renderList());
         });
+        const addMoveBtn = (icon: string, label: string, offset: number, enabled: boolean): void => {
+            const btn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
+            setIcon(btn, icon);
+            btn.setAttribute('aria-label', label);
+            if (!enabled) {
+                btn.addClass('is-disabled');
+                btn.disabled = true;
+            }
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                void this.plugin.moveSessionInOrder(session.id, offset, blockIds).then(() => this.renderList());
+            });
+        };
+        addMoveBtn('arrow-up', L.sessionMoveUp, -1, blockIdx > 0);
+        addMoveBtn('arrow-down', L.sessionMoveDown, 1, blockIdx < blockIds.length - 1);
         const deleteBtn = actions.createEl('button', { cls: 'wsmgr-manager-item-icon clickable-icon' });
         setIcon(deleteBtn, 'trash');
         deleteBtn.setAttribute('aria-label', L.contextDeleteSession);
@@ -461,11 +479,11 @@ export default class SessionManagerModal extends Modal {
         this.rowEls = [];
 
         if (!this.plugin.isGroupFeatureEnabled()) {
-            const sessions = this.sortByName(this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s)));
-            for (const session of sessions) this.renderSessionRow(this.listEl, session);
+            const sessions = this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s));
+            this.renderSessionBlock(this.listEl, sessions);
             if (sessions.length === 0) this.listEl.createEl('p', { text: L.noSession });
         } else {
-            const ungrouped = this.sortByName(this.getUngroupedSessions().filter((s) => this.matchesFilter(s)));
+            const ungrouped = this.getUngroupedSessions().filter((s) => this.matchesFilter(s));
             const groupsById: Record<string, Group> = {};
             for (const group of this.plugin.getOrderedGroups()) groupsById[group.id] = group;
             // Blocks in the saved group order; Ungrouped takes its own place in it.
@@ -480,7 +498,7 @@ export default class SessionManagerModal extends Modal {
                     this.renderGroupHeader(section, UNGROUPED_KEY, L.ribbonUngrouped, moveOptions);
                     if (!this.collapsed.has(UNGROUPED_KEY)) {
                         const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
-                        for (const session of ungrouped) this.renderSessionRow(body, session);
+                        this.renderSessionBlock(body, ungrouped);
                     }
                     return;
                 }
@@ -488,13 +506,13 @@ export default class SessionManagerModal extends Modal {
                 this.renderGroupHeader(section, group.id, group.name, { group, ...moveOptions });
                 if (!this.collapsed.has(group.id)) {
                     const body = section.createDiv({ cls: 'wsmgr-manager-group-body' });
-                    const groupSessions = this.sortByName(
-                        this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s)),
-                    );
+                    const groupSessions = this.plugin
+                        .getOrderedSessionsForGroup(group.id)
+                        .filter((s) => this.matchesFilter(s));
                     if (groupSessions.length === 0) {
                         body.createEl('p', { cls: 'wsmgr-manager-group-empty', text: L.noGroupSessions });
                     } else {
-                        for (const session of groupSessions) this.renderSessionRow(body, session);
+                        this.renderSessionBlock(body, groupSessions);
                     }
                 }
             });

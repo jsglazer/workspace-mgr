@@ -423,6 +423,10 @@ var main = {
   groupContextDuplicate: "Duplicate group",
   groupMoveUp: "Move group up",
   groupMoveDown: "Move group down",
+  sessionMoveUp: "Move workspace up",
+  sessionMoveDown: "Move workspace down",
+  settingsSessionOrder: "Workspace order",
+  settingsSessionOrderDesc: "The order of workspaces inside each group, in the workspace menu and Manage Workspaces. Rearrange with \u2191/\u2193 in Manage Workspaces.",
   settingsGroupOrder: "Group order",
   settingsGroupOrderDesc: "The order of the blocks in the workspace menu and Manage Workspaces. Ungrouped moves like any group.",
   settingsGroupSortAZ: "Sort A\u2013Z",
@@ -10545,6 +10549,32 @@ var SessionService = class {
     if (!changed) return Promise.resolve(false);
     return this.persistData().then(() => true);
   }
+  /**
+   * Move a session one block-neighbour up or down in the saved session order.
+   * `visibleIds` is the block the view shows (e.g. one group's sessions), so
+   * the session swaps places with its visible neighbour and every session
+   * outside the block keeps its slot. Returns false at either end.
+   */
+  moveSessionInOrder(sessionId, offset, visibleIds) {
+    const visible = visibleIds.filter((id2) => !!this.data.sessions[id2]);
+    const from = visible.indexOf(sessionId);
+    const to = from + offset;
+    if (from === -1 || offset === 0 || to < 0 || to >= visible.length) return Promise.resolve(false);
+    this.syncSessionOrder();
+    visible.splice(from, 1);
+    visible.splice(to, 0, sessionId);
+    return this.setSessionOrderFromVisible(visible).then((changed) => {
+      if (changed) this.updateStatusBar();
+      return changed;
+    });
+  }
+  /** Reset the saved session order to A–Z by name. */
+  sortSessionsByName() {
+    const sessions = this.data.sessions;
+    this.syncSessionOrder();
+    const sorted = this.data.sessionOrder.slice().sort((a, b) => sessions[a].name.localeCompare(sessions[b].name));
+    return this.setSessionOrderFromVisible(sorted);
+  }
   getSessionIndex(sessions, sessionId) {
     const idx = this.findSessionIndex(sessions, sessionId);
     return idx === -1 ? 0 : idx;
@@ -13893,9 +13923,6 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
   matchesFilter(session) {
     return !this.filter || session.name.toLowerCase().includes(this.filter);
   }
-  sortByName(sessions) {
-    return sessions.slice().sort((a, b) => a.name.localeCompare(b.name));
-  }
   getUngroupedSessions() {
     const sessionGroups = this.plugin.data.sessionGroups || {};
     return this.plugin.getOrderedSessions().filter((s) => {
@@ -13903,7 +13930,12 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       return !groups || groups.length === 0;
     });
   }
-  renderSessionRow(container, session) {
+  /** Render each session of one block (in saved order) with ↑/↓ buttons that move it within that block. */
+  renderSessionBlock(container, sessions) {
+    const ids = sessions.map((s) => s.id);
+    sessions.forEach((session, idx) => this.renderSessionRow(container, session, ids, idx));
+  }
+  renderSessionRow(container, session, blockIds, blockIdx) {
     const L2 = L;
     const row = container.createDiv({ cls: "wsmgr-manager-item" });
     if (session.id === this.plugin.data.activeSessionId) row.addClass("is-active");
@@ -13935,6 +13967,21 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       e.stopPropagation();
       void this.plugin.duplicateSession(session.id).then(() => this.renderList());
     });
+    const addMoveBtn = (icon, label, offset, enabled) => {
+      const btn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
+      (0, import_obsidian10.setIcon)(btn, icon);
+      btn.setAttribute("aria-label", label);
+      if (!enabled) {
+        btn.addClass("is-disabled");
+        btn.disabled = true;
+      }
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void this.plugin.moveSessionInOrder(session.id, offset, blockIds).then(() => this.renderList());
+      });
+    };
+    addMoveBtn("arrow-up", L2.sessionMoveUp, -1, blockIdx > 0);
+    addMoveBtn("arrow-down", L2.sessionMoveDown, 1, blockIdx < blockIds.length - 1);
     const deleteBtn = actions.createEl("button", { cls: "wsmgr-manager-item-icon clickable-icon" });
     (0, import_obsidian10.setIcon)(deleteBtn, "trash");
     deleteBtn.setAttribute("aria-label", L2.contextDeleteSession);
@@ -14066,11 +14113,11 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
     this.sessions = [];
     this.rowEls = [];
     if (!this.plugin.isGroupFeatureEnabled()) {
-      const sessions = this.sortByName(this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s)));
-      for (const session of sessions) this.renderSessionRow(this.listEl, session);
+      const sessions = this.plugin.getOrderedSessions().filter((s) => this.matchesFilter(s));
+      this.renderSessionBlock(this.listEl, sessions);
       if (sessions.length === 0) this.listEl.createEl("p", { text: L2.noSession });
     } else {
-      const ungrouped = this.sortByName(this.getUngroupedSessions().filter((s) => this.matchesFilter(s)));
+      const ungrouped = this.getUngroupedSessions().filter((s) => this.matchesFilter(s));
       const groupsById = {};
       for (const group of this.plugin.getOrderedGroups()) groupsById[group.id] = group;
       const order = this.plugin.getOrderedGroupTabIds().filter((id2) => id2 === UNGROUPED_ORDER_ID ? ungrouped.length > 0 : !!groupsById[id2]);
@@ -14081,7 +14128,7 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
           this.renderGroupHeader(section, UNGROUPED_KEY, L2.ribbonUngrouped, moveOptions);
           if (!this.collapsed.has(UNGROUPED_KEY)) {
             const body = section.createDiv({ cls: "wsmgr-manager-group-body" });
-            for (const session of ungrouped) this.renderSessionRow(body, session);
+            this.renderSessionBlock(body, ungrouped);
           }
           return;
         }
@@ -14089,13 +14136,11 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
         this.renderGroupHeader(section, group.id, group.name, { group, ...moveOptions });
         if (!this.collapsed.has(group.id)) {
           const body = section.createDiv({ cls: "wsmgr-manager-group-body" });
-          const groupSessions = this.sortByName(
-            this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s))
-          );
+          const groupSessions = this.plugin.getOrderedSessionsForGroup(group.id).filter((s) => this.matchesFilter(s));
           if (groupSessions.length === 0) {
             body.createEl("p", { cls: "wsmgr-manager-group-empty", text: L2.noGroupSessions });
           } else {
-            for (const session of groupSessions) this.renderSessionRow(body, session);
+            this.renderSessionBlock(body, groupSessions);
           }
         }
       });
@@ -14209,7 +14254,6 @@ var UnsavedSwitchModal = class extends import_obsidian11.Modal {
 
 // src/workspace-menu.ts
 var import_obsidian12 = require("obsidian");
-var byName = (a, b) => a.name.localeCompare(b.name);
 var UNGROUPED_ORDER_ID2 = "__all__";
 function addGroupedSessionItems(menu, plugin, options) {
   const L2 = L;
@@ -14226,7 +14270,7 @@ function addGroupedSessionItems(menu, plugin, options) {
   };
   const allSessions = plugin.getOrderedSessions().filter(keep);
   if (!plugin.isGroupFeatureEnabled()) {
-    for (const session of allSessions.slice().sort(byName)) addSession(session);
+    for (const session of allSessions) addSession(session);
     return added;
   }
   const sessionGroups = plugin.data.sessionGroups || {};
@@ -14235,7 +14279,7 @@ function addGroupedSessionItems(menu, plugin, options) {
   let wroteBlock = false;
   for (const id2 of plugin.getOrderedGroupTabIds()) {
     if (id2 === UNGROUPED_ORDER_ID2) {
-      const ungrouped = allSessions.filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0).sort(byName);
+      const ungrouped = allSessions.filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0);
       if (ungrouped.length === 0) continue;
       if (wroteBlock) {
         menu.addSeparator();
@@ -14247,7 +14291,7 @@ function addGroupedSessionItems(menu, plugin, options) {
     }
     const group = groupsById[id2];
     if (!group) continue;
-    const groupSessions = plugin.getOrderedSessionsForGroup(group.id).filter(keep).sort(byName);
+    const groupSessions = plugin.getOrderedSessionsForGroup(group.id).filter(keep);
     if (groupSessions.length === 0) continue;
     if (wroteBlock) menu.addSeparator();
     menu.addItem((item) => item.setTitle(group.name).setIcon("folder").setDisabled(true));
@@ -14759,6 +14803,13 @@ var WorkspaceMgrSettingTab = class extends import_obsidian15.PluginSettingTab {
         );
       });
     }
+    new import_obsidian15.Setting(containerEl).setName(L2.settingsSessionOrder).setDesc(L2.settingsSessionOrderDesc).addButton(
+      (b) => b.setButtonText(L2.settingsGroupSortAZ).onClick(async () => {
+        var _a2, _b;
+        await this.host.session.sortSessionsByName();
+        (_b = (_a2 = this.host).updateStatusBar) == null ? void 0 : _b.call(_a2);
+      })
+    );
     new import_obsidian15.Setting(containerEl).setName("Ribbon").setHeading();
     {
       const allSessions = this.host.session.getOrderedSessionsUnfiltered();
@@ -15116,6 +15167,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
   }
   moveGroupInOrder(groupId, offset, visibleIds) {
     return this.session.moveGroupInOrder(groupId, offset, visibleIds);
+  }
+  moveSessionInOrder(sessionId, offset, visibleIds) {
+    return this.session.moveSessionInOrder(sessionId, offset, visibleIds);
   }
   getOrderedSessionsForGroup(groupId) {
     return this.session.getOrderedSessionsForGroup(groupId);

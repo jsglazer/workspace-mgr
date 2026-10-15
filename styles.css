@@ -1177,6 +1177,10 @@ body.wsmgr-session-list-dragging * {
     color: var(--color-orange);
 }
 
+.menu-item.wsmgr-menu-save .menu-item-title {
+    font-weight: var(--font-bold);
+}
+
 .menu-item.wsmgr-menu-reload,
 .menu-item.wsmgr-menu-reload .menu-item-icon {
     color: var(--color-blue);

@@ -32,8 +32,6 @@ export interface SessionListOptions {
     onPick: (session: Session, evt: MouseEvent | KeyboardEvent) => unknown;
 }
 
-const byName = (a: { name: string }, b: { name: string }): number => a.name.localeCompare(b.name);
-
 /** The `groupOrder` id that stands for the Ungrouped block. */
 export const UNGROUPED_ORDER_ID = '__all__';
 
@@ -41,7 +39,7 @@ export const UNGROUPED_ORDER_ID = '__all__';
  * Add the sessions to `menu`, arranged as the workspace menu shows them: one
  * block per group in the saved group order (the Ungrouped block takes its own
  * place in that order), each group under a disabled folder header, sessions
- * sorted by name. Ungrouped gets a header only when a group block precedes it.
+ * in the saved session order. Ungrouped gets a header only when a group block precedes it.
  * Returns how many sessions were added.
  */
 export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, options: SessionListOptions): number {
@@ -60,7 +58,7 @@ export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, 
 
     const allSessions = plugin.getOrderedSessions().filter(keep);
     if (!plugin.isGroupFeatureEnabled()) {
-        for (const session of allSessions.slice().sort(byName)) addSession(session);
+        for (const session of allSessions) addSession(session);
         return added;
     }
 
@@ -72,8 +70,7 @@ export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, 
     for (const id of plugin.getOrderedGroupTabIds()) {
         if (id === UNGROUPED_ORDER_ID) {
             const ungrouped = allSessions
-                .filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0)
-                .sort(byName);
+                .filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0);
             if (ungrouped.length === 0) continue;
             if (wroteBlock) {
                 menu.addSeparator();
@@ -85,7 +82,7 @@ export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, 
         }
         const group = groupsById[id];
         if (!group) continue;
-        const groupSessions = plugin.getOrderedSessionsForGroup(group.id).filter(keep).sort(byName);
+        const groupSessions = plugin.getOrderedSessionsForGroup(group.id).filter(keep);
         if (groupSessions.length === 0) continue;
         if (wroteBlock) menu.addSeparator();
         menu.addItem((item) => item.setTitle(group.name).setIcon('folder').setDisabled(true));
