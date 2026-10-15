@@ -201,3 +201,25 @@ describe('workspace menu', () => {
         expect(titles(menu.entries).slice(0, 2)).toEqual(['Loose', '---']);
     });
 });
+
+describe('reorders are stamped for Sync merges', () => {
+    test('moving a group stamps groupOrderModified', async () => {
+        const { svc } = createService();
+        expect(svc.data.groupOrderModified).toBeUndefined();
+        await svc.moveGroupInOrder('g3', -1);
+        expect(typeof svc.data.groupOrderModified).toBe('number');
+        expect(svc.data.groupOrderModified).toBeGreaterThan(0);
+    });
+
+    test('moving a session stamps sessionOrderModified', async () => {
+        const { svc } = createService();
+        await svc.moveSessionInOrder('s2', -1, ['s1', 's2', 's3', 's4']);
+        expect(svc.data.sessionOrderModified).toBeGreaterThan(0);
+    });
+
+    test('a no-op move does not stamp', async () => {
+        const { svc } = createService();
+        await svc.moveGroupInOrder('__all__', -1);
+        expect(svc.data.groupOrderModified).toBeUndefined();
+    });
+});

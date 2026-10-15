@@ -28,14 +28,18 @@ import {
     mergeDiscoveredSessions,
     mergeObjectWithLocalDeletes,
     mergeOrder,
+    mergeOrderWithWinner,
     mergeSessionTombstones,
     normalizeSessionTombstones,
+    pickOrderWinner,
     reattachSessionHistory,
     type SessionTombstones,
 } from './sync';
 import type { AppLike } from './host';
 import type { Session, SessionData } from './types';
 
+/** The `groupOrder` id that stands for the Ungrouped block. */
+const UNGROUPED_ORDER_ID = '__all__';
 const EXTERNAL_SESSION_RELOAD_DEBOUNCE_MS = 500;
 const SESSION_FILE_MTIME_EPSILON_MS = 25;
 const BACKUP_ROTATION_INTERVAL = 3600000; // 1 hour
@@ -46,6 +50,8 @@ const SESSION_KEYS = [
     'sessionOrder',
     'groups',
     'groupOrder',
+    'sessionOrderModified',
+    'groupOrderModified',
     'sessionGroups',
     'activeGroupId',
     'deletedSessions',
@@ -93,9 +99,15 @@ interface NormalizedSessionData {
     sessionOrder: string[];
     groups: Record<string, { id: string; name: string }>;
     groupOrder: string[];
+    sessionOrderModified: number;
+    groupOrderModified: number;
     sessionGroups: Record<string, string[]>;
     activeGroupId: string | null;
     deletedSessions: SessionTombstones;
+}
+
+function orderStamp(value: unknown): number {
+    return typeof value === 'number' && isFinite(value) ? value : 0;
 }
 
 function pickKeys<T extends Record<string, unknown>>(data: T | undefined, keys: readonly string[]): Record<string, unknown> {
@@ -232,7 +244,7 @@ export class PersistenceService {
         const seenGroups: Record<string, boolean> = {};
         const groupOrder: string[] = [];
         for (const gid of rawGroupOrder) {
-            if (gid !== '__all__' && !groups[gid]) continue;
+            if (gid !== UNGROUPED_ORDER_ID && !groups[gid]) continue;
             if (seenGroups[gid]) continue;
             seenGroups[gid] = true;
             groupOrder.push(gid);
@@ -261,6 +273,8 @@ export class PersistenceService {
             sessionOrder: order,
             groups,
             groupOrder,
+            sessionOrderModified: orderStamp(raw && raw.sessionOrderModified),
+            groupOrderModified: orderStamp(raw && raw.groupOrderModified),
             sessionGroups: sessionGroupsCleaned,
             activeGroupId,
             deletedSessions,
@@ -395,12 +409,36 @@ export class PersistenceService {
         const groups = mergeObjectWithLocalDeletes(external.groups, local.groups, baseline.groups);
         const sessionGroups = mergeObjectWithLocalDeletes(external.sessionGroups, local.sessionGroups, baseline.sessionGroups);
 
+        // Orders are three-way merged: a reorder made on only one side survives
+        // instead of the incoming copy always winning (which let a stale device
+        // undo a reorder), and the Ungrouped block keeps its place.
+        const sessionWinner = pickOrderWinner(
+            { order: local.sessionOrder, modified: local.sessionOrderModified },
+            { order: external.sessionOrder, modified: external.sessionOrderModified },
+            baseline.sessionOrder,
+        );
+        const groupWinner = pickOrderWinner(
+            { order: local.groupOrder, modified: local.groupOrderModified },
+            { order: external.groupOrder, modified: external.groupOrderModified },
+            baseline.groupOrder,
+        );
+        const sessionOrder =
+            sessionWinner === 'local'
+                ? mergeOrder(local.sessionOrder, external.sessionOrder, mergedSessions)
+                : mergeOrder(external.sessionOrder, local.sessionOrder, mergedSessions);
+        const groupOrder =
+            groupWinner === 'local'
+                ? mergeOrderWithWinner(local.groupOrder, external.groupOrder, groups, [UNGROUPED_ORDER_ID])
+                : mergeOrderWithWinner(external.groupOrder, local.groupOrder, groups, [UNGROUPED_ORDER_ID]);
+
         return this.normalizeSessionData({
             activeSessionId: local.activeSessionId || external.activeSessionId,
             sessions: mergedSessions,
-            sessionOrder: mergeOrder(external.sessionOrder, local.sessionOrder, mergedSessions),
+            sessionOrder,
+            sessionOrderModified: Math.max(local.sessionOrderModified, external.sessionOrderModified),
             groups,
-            groupOrder: mergeOrder(external.groupOrder, local.groupOrder, groups),
+            groupOrder,
+            groupOrderModified: Math.max(local.groupOrderModified, external.groupOrderModified),
             sessionGroups,
             activeGroupId: local.activeGroupId || external.activeGroupId,
             deletedSessions: mergeSessionTombstones(external.deletedSessions, local.deletedSessions),
@@ -421,6 +459,8 @@ export class PersistenceService {
         this.data.sessionOrder = next.sessionOrder || [];
         this.data.groups = next.groups || {};
         this.data.groupOrder = next.groupOrder || [];
+        this.data.sessionOrderModified = next.sessionOrderModified || 0;
+        this.data.groupOrderModified = next.groupOrderModified || 0;
         this.data.sessionGroups = next.sessionGroups || {};
         this.data.deletedSessions = next.deletedSessions || {};
 

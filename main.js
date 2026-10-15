@@ -10298,6 +10298,37 @@ function mergeOrder(primary, secondary, validMap) {
   if (validMap) for (const id2 of Object.keys(validMap)) add(id2);
   return out;
 }
+function sameIdList(a, b) {
+  const x = Array.isArray(a) ? a : [];
+  const y = Array.isArray(b) ? b : [];
+  if (x.length !== y.length) return false;
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
+function pickOrderWinner(local, external, baseline) {
+  const hasBaseline = Array.isArray(baseline);
+  const localChanged = !hasBaseline || !sameIdList(local.order, baseline);
+  const externalChanged = !hasBaseline || !sameIdList(external.order, baseline);
+  if (localChanged && !externalChanged) return "local";
+  if (externalChanged && !localChanged) return "external";
+  return (local.modified || 0) > (external.modified || 0) ? "local" : "external";
+}
+function mergeOrderWithWinner(winner, loser, validMap, keepIds = []) {
+  const w = Array.isArray(winner) ? winner : [];
+  const l = Array.isArray(loser) ? loser : [];
+  const isKeep = (id2) => keepIds.indexOf(id2) !== -1;
+  const merged = mergeOrder(w.filter((id2) => !isKeep(id2)), l.filter((id2) => !isKeep(id2)), validMap);
+  w.forEach((id2, idx) => {
+    if (isKeep(id2) && merged.indexOf(id2) === -1) merged.splice(Math.min(idx, merged.length), 0, id2);
+  });
+  for (const id2 of keepIds) {
+    if (merged.indexOf(id2) !== -1) continue;
+    const at = l.indexOf(id2);
+    if (at === -1) continue;
+    merged.splice(Math.min(at, merged.length), 0, id2);
+  }
+  return merged;
+}
 function mergeObjectWithLocalDeletes(externalObj, localObj, baselineObj) {
   const ext = externalObj || {};
   const local = localObj || {};
@@ -10383,6 +10414,8 @@ function buildSyncedSessionPayload(data) {
     sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],
     groups: cloneJson(data.groups || {}),
     groupOrder: Array.isArray(data.groupOrder) ? cloneJson(data.groupOrder) : [],
+    sessionOrderModified: typeof data.sessionOrderModified === "number" ? data.sessionOrderModified : 0,
+    groupOrderModified: typeof data.groupOrderModified === "number" ? data.groupOrderModified : 0,
     sessionGroups: cloneJson(data.sessionGroups || {}),
     activeGroupId: (_b = data.activeGroupId) != null ? _b : null,
     deletedSessions: normalizeSessionTombstones(data.deletedSessions)
@@ -10544,6 +10577,7 @@ var SessionService = class {
       }
     }
     this.data.sessionOrder = merged;
+    if (changed) this.data.sessionOrderModified = Date.now();
     if (!(options && options.syncCommands === false)) this.syncSessionCommands();
     if (options && options.persist === false) return Promise.resolve(changed);
     if (!changed) return Promise.resolve(false);
@@ -11517,6 +11551,7 @@ var SessionService = class {
       }
     }
     this.data.groupOrder = normalized;
+    if (changed) this.data.groupOrderModified = Date.now();
     if (options && options.persist === false) return Promise.resolve(changed);
     if (!changed) return Promise.resolve(false);
     return this.persistData().then(() => true);
@@ -12132,6 +12167,7 @@ var SessionService = class {
 };
 
 // src/core/persistence-service.ts
+var UNGROUPED_ORDER_ID = "__all__";
 var EXTERNAL_SESSION_RELOAD_DEBOUNCE_MS = 500;
 var SESSION_FILE_MTIME_EPSILON_MS = 25;
 var BACKUP_ROTATION_INTERVAL = 36e5;
@@ -12141,6 +12177,8 @@ var SESSION_KEYS = [
   "sessionOrder",
   "groups",
   "groupOrder",
+  "sessionOrderModified",
+  "groupOrderModified",
   "sessionGroups",
   "activeGroupId",
   "deletedSessions"
@@ -12185,6 +12223,9 @@ var SETTINGS_KEYS = [
   "menuBarNameColorLight",
   "menuBarNameColorDark"
 ];
+function orderStamp(value) {
+  return typeof value === "number" && isFinite(value) ? value : 0;
+}
 function pickKeys(data, keys) {
   const out = {};
   if (!data) return out;
@@ -12312,7 +12353,7 @@ var PersistenceService = class {
     const seenGroups = {};
     const groupOrder = [];
     for (const gid of rawGroupOrder) {
-      if (gid !== "__all__" && !groups[gid]) continue;
+      if (gid !== UNGROUPED_ORDER_ID && !groups[gid]) continue;
       if (seenGroups[gid]) continue;
       seenGroups[gid] = true;
       groupOrder.push(gid);
@@ -12337,6 +12378,8 @@ var PersistenceService = class {
       sessionOrder: order,
       groups,
       groupOrder,
+      sessionOrderModified: orderStamp(raw && raw.sessionOrderModified),
+      groupOrderModified: orderStamp(raw && raw.groupOrderModified),
       sessionGroups: sessionGroupsCleaned,
       activeGroupId,
       deletedSessions
@@ -12447,12 +12490,26 @@ var PersistenceService = class {
     }
     const groups = mergeObjectWithLocalDeletes(external.groups, local.groups, baseline.groups);
     const sessionGroups = mergeObjectWithLocalDeletes(external.sessionGroups, local.sessionGroups, baseline.sessionGroups);
+    const sessionWinner = pickOrderWinner(
+      { order: local.sessionOrder, modified: local.sessionOrderModified },
+      { order: external.sessionOrder, modified: external.sessionOrderModified },
+      baseline.sessionOrder
+    );
+    const groupWinner = pickOrderWinner(
+      { order: local.groupOrder, modified: local.groupOrderModified },
+      { order: external.groupOrder, modified: external.groupOrderModified },
+      baseline.groupOrder
+    );
+    const sessionOrder = sessionWinner === "local" ? mergeOrder(local.sessionOrder, external.sessionOrder, mergedSessions) : mergeOrder(external.sessionOrder, local.sessionOrder, mergedSessions);
+    const groupOrder = groupWinner === "local" ? mergeOrderWithWinner(local.groupOrder, external.groupOrder, groups, [UNGROUPED_ORDER_ID]) : mergeOrderWithWinner(external.groupOrder, local.groupOrder, groups, [UNGROUPED_ORDER_ID]);
     return this.normalizeSessionData({
       activeSessionId: local.activeSessionId || external.activeSessionId,
       sessions: mergedSessions,
-      sessionOrder: mergeOrder(external.sessionOrder, local.sessionOrder, mergedSessions),
+      sessionOrder,
+      sessionOrderModified: Math.max(local.sessionOrderModified, external.sessionOrderModified),
       groups,
-      groupOrder: mergeOrder(external.groupOrder, local.groupOrder, groups),
+      groupOrder,
+      groupOrderModified: Math.max(local.groupOrderModified, external.groupOrderModified),
       sessionGroups,
       activeGroupId: local.activeGroupId || external.activeGroupId,
       deletedSessions: mergeSessionTombstones(external.deletedSessions, local.deletedSessions)
@@ -12468,6 +12525,8 @@ var PersistenceService = class {
     this.data.sessionOrder = next.sessionOrder || [];
     this.data.groups = next.groups || {};
     this.data.groupOrder = next.groupOrder || [];
+    this.data.sessionOrderModified = next.sessionOrderModified || 0;
+    this.data.groupOrderModified = next.groupOrderModified || 0;
     this.data.sessionGroups = next.sessionGroups || {};
     this.data.deletedSessions = next.deletedSessions || {};
     if (localActiveSessionId && this.data.sessions[localActiveSessionId]) {
@@ -13734,7 +13793,7 @@ function openSessionContextMenu2(options) {
 
 // src/modals/session-manager-modal.ts
 var UNGROUPED_KEY = "__ungrouped__";
-var UNGROUPED_ORDER_ID = "__all__";
+var UNGROUPED_ORDER_ID2 = "__all__";
 var SessionManagerModal = class extends import_obsidian10.Modal {
   constructor(app, plugin) {
     super(app);
@@ -14120,11 +14179,11 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
       const ungrouped = this.getUngroupedSessions().filter((s) => this.matchesFilter(s));
       const groupsById = {};
       for (const group of this.plugin.getOrderedGroups()) groupsById[group.id] = group;
-      const order = this.plugin.getOrderedGroupTabIds().filter((id2) => id2 === UNGROUPED_ORDER_ID ? ungrouped.length > 0 : !!groupsById[id2]);
+      const order = this.plugin.getOrderedGroupTabIds().filter((id2) => id2 === UNGROUPED_ORDER_ID2 ? ungrouped.length > 0 : !!groupsById[id2]);
       order.forEach((id2, idx) => {
         const moveOptions = { orderId: id2, visibleOrder: order, canMoveUp: idx > 0, canMoveDown: idx < order.length - 1 };
         const section = this.listEl.createDiv({ cls: "wsmgr-manager-group-section" });
-        if (id2 === UNGROUPED_ORDER_ID) {
+        if (id2 === UNGROUPED_ORDER_ID2) {
           this.renderGroupHeader(section, UNGROUPED_KEY, L2.ribbonUngrouped, moveOptions);
           if (!this.collapsed.has(UNGROUPED_KEY)) {
             const body = section.createDiv({ cls: "wsmgr-manager-group-body" });
@@ -14254,7 +14313,7 @@ var UnsavedSwitchModal = class extends import_obsidian11.Modal {
 
 // src/workspace-menu.ts
 var import_obsidian12 = require("obsidian");
-var UNGROUPED_ORDER_ID2 = "__all__";
+var UNGROUPED_ORDER_ID3 = "__all__";
 function addGroupedSessionItems(menu, plugin, options) {
   const L2 = L;
   const activeId = plugin.data.activeSessionId;
@@ -14278,7 +14337,7 @@ function addGroupedSessionItems(menu, plugin, options) {
   for (const group of plugin.getOrderedGroups()) groupsById[group.id] = group;
   let wroteBlock = false;
   for (const id2 of plugin.getOrderedGroupTabIds()) {
-    if (id2 === UNGROUPED_ORDER_ID2) {
+    if (id2 === UNGROUPED_ORDER_ID3) {
       const ungrouped = allSessions.filter((s) => !sessionGroups[s.id] || sessionGroups[s.id].length === 0);
       if (ungrouped.length === 0) continue;
       if (wroteBlock) {

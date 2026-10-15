@@ -207,6 +207,108 @@ describe('applyExternalDataJson: absorbing a Sync-delivered write', () => {
     });
 });
 
+describe('applyExternalDataJson: reorders survive a Sync merge', () => {
+    const groups = { g1: { id: 'g1', name: 'One' }, g2: { id: 'g2', name: 'Two' }, g3: { id: 'g3', name: 'Three' } };
+    const sessions = { a: session('a', 'A', 5), b: session('b', 'B', 5) };
+
+    function baseState(svc: PersistenceService) {
+        svc.data = {
+            ...svc.data,
+            sessions: { ...sessions },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['__all__', 'g1', 'g2', 'g3'],
+            activeSessionId: 'a',
+        } as unknown as SessionData;
+        svc.recordSessionStorageState(1, 1, svc.data);
+    }
+
+    test('a stale incoming copy does not undo a local group reorder', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        // The user reorders locally: Three first, Ungrouped last.
+        svc.data.groupOrder = ['g3', 'g1', 'g2', '__all__'];
+        svc.data.groupOrderModified = 1000;
+
+        // Another device, still on the old order, pushes its data.json (e.g. after a session edit).
+        svc.applyExternalDataJson({
+            sessions: { a: session('a', 'A edited', 50), b: session('b', 'B', 5) },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['g1', 'g2', 'g3'],
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.groupOrder).toEqual(['g3', 'g1', 'g2', '__all__']);
+        expect(svc.data.sessions.a.name).toBe('A edited');
+    });
+
+    test('a stale incoming copy does not undo a local session reorder', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        svc.data.sessionOrder = ['b', 'a'];
+        svc.data.sessionOrderModified = 1000;
+
+        svc.applyExternalDataJson({
+            sessions: { a: session('a', 'A edited', 50), b: session('b', 'B', 5) },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['__all__', 'g1', 'g2', 'g3'],
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.sessionOrder).toEqual(['b', 'a']);
+    });
+
+    test('a remote reorder is adopted when the local order is unchanged', () => {
+        const { svc } = makeService();
+        baseState(svc);
+
+        svc.applyExternalDataJson({
+            sessions: { ...sessions },
+            sessionOrder: ['b', 'a'],
+            sessionOrderModified: 2000,
+            groups: { ...groups },
+            groupOrder: ['g2', '__all__', 'g1', 'g3'],
+            groupOrderModified: 2000,
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        expect(svc.data.groupOrder).toEqual(['g2', '__all__', 'g1', 'g3']);
+        expect(svc.data.sessionOrder).toEqual(['b', 'a']);
+        expect(svc.data.groupOrderModified).toBe(2000);
+    });
+
+    test('when both sides reordered, the later reorder wins', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        svc.data.groupOrder = ['g3', '__all__', 'g1', 'g2'];
+        svc.data.groupOrderModified = 1000;
+
+        svc.applyExternalDataJson({
+            sessions: { ...sessions },
+            sessionOrder: ['a', 'b'],
+            groups: { ...groups },
+            groupOrder: ['g2', 'g1', 'g3'],
+            groupOrderModified: 3000,
+            activeSessionId: 'a',
+        } as Partial<SessionData>);
+
+        // Remote order wins; Ungrouped keeps the place it had locally instead of being dropped.
+        expect(svc.data.groupOrder).toEqual(['g2', '__all__', 'g1', 'g3']);
+    });
+
+    test('the Ungrouped block position is written to data.json', () => {
+        const { svc } = makeService();
+        baseState(svc);
+        svc.data.groupOrder = ['g1', 'g2', 'g3', '__all__'];
+        const payload = svc.buildDataJsonPayload();
+        expect(payload.groupOrder).toEqual(['g1', 'g2', 'g3', '__all__']);
+        const reloaded = svc.extractSessionData(payload as Partial<SessionData>);
+        expect(reloaded.groupOrder).toEqual(['g1', 'g2', 'g3', '__all__']);
+    });
+});
+
 describe('local mirror hygiene', () => {
     test('persisting removes mirror files for sessions that no longer exist', async () => {
         const { svc, written } = makeService({

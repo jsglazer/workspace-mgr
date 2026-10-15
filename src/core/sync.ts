@@ -106,6 +106,62 @@ export function mergeOrder(
     return out;
 }
 
+function sameIdList(a: string[] | undefined, b: string[] | undefined): boolean {
+    const x = Array.isArray(a) ? a : [];
+    const y = Array.isArray(b) ? b : [];
+    if (x.length !== y.length) return false;
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+    return true;
+}
+
+/**
+ * Decide whose order leads a merge (three-way, against the last stored
+ * baseline). The side that alone changed the order since the baseline wins; when
+ * both changed it, the later explicit reorder (its `*OrderModified` stamp) wins.
+ * Ties go to the external copy, matching the old behaviour.
+ */
+export function pickOrderWinner(
+    local: { order: string[] | undefined; modified: number },
+    external: { order: string[] | undefined; modified: number },
+    baseline: string[] | undefined,
+): 'local' | 'external' {
+    const hasBaseline = Array.isArray(baseline);
+    const localChanged = !hasBaseline || !sameIdList(local.order, baseline);
+    const externalChanged = !hasBaseline || !sameIdList(external.order, baseline);
+    if (localChanged && !externalChanged) return 'local';
+    if (externalChanged && !localChanged) return 'external';
+    return (local.modified || 0) > (external.modified || 0) ? 'local' : 'external';
+}
+
+/**
+ * Merge two orders where `winner` leads. `keepIds` are pseudo-ids that are not
+ * in `validMap` but must survive (the Ungrouped block, `__all__`): when the
+ * winner lacks one, it is reinserted at the loser's index rather than dropped,
+ * so the block keeps the place the user gave it.
+ */
+export function mergeOrderWithWinner(
+    winner: string[] | undefined,
+    loser: string[] | undefined,
+    validMap: Record<string, unknown>,
+    keepIds: string[] = [],
+): string[] {
+    const w = Array.isArray(winner) ? winner : [];
+    const l = Array.isArray(loser) ? loser : [];
+    const isKeep = (id: string) => keepIds.indexOf(id) !== -1;
+    // Merge the real ids, then put the winner's keep-ids back at their own indexes.
+    const merged = mergeOrder(w.filter((id) => !isKeep(id)), l.filter((id) => !isKeep(id)), validMap);
+    w.forEach((id, idx) => {
+        if (isKeep(id) && merged.indexOf(id) === -1) merged.splice(Math.min(idx, merged.length), 0, id);
+    });
+    for (const id of keepIds) {
+        if (merged.indexOf(id) !== -1) continue;
+        const at = l.indexOf(id);
+        if (at === -1) continue;
+        merged.splice(Math.min(at, merged.length), 0, id);
+    }
+    return merged;
+}
+
 /**
  * Merge two id-keyed maps (groups / sessionGroups) with support for local
  * deletions: an external entry that existed in the baseline but is gone locally
@@ -266,6 +322,8 @@ export function buildSyncedSessionPayload(data: Partial<SessionData>): Record<st
         sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],
         groups: cloneJson(data.groups || {}),
         groupOrder: Array.isArray(data.groupOrder) ? cloneJson(data.groupOrder) : [],
+        sessionOrderModified: typeof data.sessionOrderModified === 'number' ? data.sessionOrderModified : 0,
+        groupOrderModified: typeof data.groupOrderModified === 'number' ? data.groupOrderModified : 0,
         sessionGroups: cloneJson(data.sessionGroups || {}),
         activeGroupId: data.activeGroupId ?? null,
         deletedSessions: normalizeSessionTombstones(data.deletedSessions),

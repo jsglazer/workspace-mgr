@@ -204,6 +204,7 @@ export class SessionService {
             }
         }
         this.data.sessionOrder = merged;
+        if (changed) this.data.sessionOrderModified = Date.now();
         if (!(options && options.syncCommands === false)) this.syncSessionCommands();
         if (options && options.persist === false) return Promise.resolve(changed);
         if (!changed) return Promise.resolve(false);
@@ -1351,6 +1352,7 @@ export class SessionService {
             }
         }
         this.data.groupOrder = normalized;
+        if (changed) this.data.groupOrderModified = Date.now();
         if (options && options.persist === false) return Promise.resolve(changed);
         if (!changed) return Promise.resolve(false);
         return this.persistData().then(() => true);

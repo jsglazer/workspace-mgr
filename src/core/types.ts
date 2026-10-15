@@ -35,6 +35,10 @@ export interface SessionData {
     sessionGroups: Record<string, string[]>;
     groups: Record<string, Group>;
     groupOrder: string[];
+    /** When the user last reordered sessions; decides whose order wins a Sync merge. */
+    sessionOrderModified?: number;
+    /** When the user last reordered groups; decides whose order wins a Sync merge. */
+    groupOrderModified?: number;
     activeGroupId: string | null;
     /** Deleted session id -> deletion time; synced so deletes reach every device. */
     deletedSessions?: Record<string, number>;
