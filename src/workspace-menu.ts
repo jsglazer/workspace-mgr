@@ -21,7 +21,11 @@ export interface WorkspaceMenuPlugin {
     switchSession(sessionId: string): Promise<boolean>;
     openSaveCurrentLayoutMenu(event?: unknown): void;
     updateStatusBar(): void;
+    canPinWindowSize?(): boolean;
 }
+
+/** Icon marking a workspace that has a pinned window size. */
+export const PINNED_WINDOW_ICON = 'app-window';
 
 export interface SessionListOptions {
     /** Session id to leave out of the list (e.g. the active one). */
@@ -52,6 +56,7 @@ export function addGroupedSessionItems(menu: Menu, plugin: WorkspaceMenuPlugin, 
             item.setTitle(session.name).onClick((evt) => void options.onPick(session, evt));
             if (options.checkActive) item.setChecked(session.id === activeId);
             if (options.icon) item.setIcon(options.icon);
+            else if (session.windowBounds) item.setIcon(PINNED_WINDOW_ICON);
         });
         added++;
     };
@@ -166,6 +171,8 @@ export function buildWorkspaceMenu(plugin: WorkspaceMenuPlugin): Menu {
         add(L.contextRenameSession, 'pencil', () => actions.onRename());
         add(L.contextDuplicateSession, 'copy', () => actions.onDuplicate());
         add(L.contextVersionHistory, 'history', () => actions.onVersionHistory());
+        if (actions.onPinWindowSize) add(L.contextPinWindowSize, PINNED_WINDOW_ICON, () => actions.onPinWindowSize!());
+        if (actions.onClearWindowSize) add(L.contextClearWindowSize, 'x-square', () => actions.onClearWindowSize!());
         const groups = plugin.isGroupFeatureEnabled() ? plugin.getOrderedGroups() : [];
         if (groups.length > 0) {
             add(L.groupMoveToGroup + '...', 'folder-input', (evt) =>

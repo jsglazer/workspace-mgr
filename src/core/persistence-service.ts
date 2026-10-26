@@ -35,6 +35,7 @@ import {
     reattachSessionHistory,
     type SessionTombstones,
 } from './sync';
+import { mergeRibbonLock, normalizeRibbonLock, type RibbonLock } from './ribbon-lock';
 import type { AppLike } from './host';
 import type { Session, SessionData } from './types';
 
@@ -55,6 +56,7 @@ const SESSION_KEYS = [
     'sessionGroups',
     'activeGroupId',
     'deletedSessions',
+    'ribbonLock',
 ] as const;
 
 const SETTINGS_KEYS = [
@@ -66,7 +68,8 @@ const SETTINGS_KEYS = [
     'statusBarScrollCooldownMs', 'statusBarScrollResetMs', 'statusBarScrollInvert', 'statusBarActions',
     'confirmQuickActions', 'showFilterInput', 'showActiveSwitchCommand', 'numberedSwitchCommands',
     'statusBarNameColorLight', 'statusBarNameColorDark', 'unsavedHighlightColorLight', 'unsavedHighlightColorDark',
-    'ribbonSyncToFutureSessions', 'syncedRibbonHiddenItems',
+    'ribbonSyncToFutureSessions', 'syncedRibbonHiddenItems', 'ribbonLockUnknownItems', 'ribbonLockAnnouncedIds',
+    'windowRestoreMode',
     'menuBarNameColorLight', 'menuBarNameColorDark',
 ];
 
@@ -104,6 +107,8 @@ interface NormalizedSessionData {
     sessionGroups: Record<string, string[]>;
     activeGroupId: string | null;
     deletedSessions: SessionTombstones;
+    /** Present only when a lock exists, so lock-free data keeps its old shape. */
+    ribbonLock?: RibbonLock;
 }
 
 function orderStamp(value: unknown): number {
@@ -267,7 +272,9 @@ export class PersistenceService {
         const activeGroupId =
             raw && typeof raw.activeGroupId === 'string' && groups[raw.activeGroupId] ? raw.activeGroupId : null;
 
+        const ribbonLock = normalizeRibbonLock(raw && raw.ribbonLock);
         return {
+            ...(ribbonLock ? { ribbonLock } : {}),
             activeSessionId: active,
             sessions,
             sessionOrder: order,
@@ -432,6 +439,7 @@ export class PersistenceService {
                 : mergeOrderWithWinner(external.groupOrder, local.groupOrder, groups, [UNGROUPED_ORDER_ID]);
 
         return this.normalizeSessionData({
+            ribbonLock: mergeRibbonLock(local.ribbonLock, external.ribbonLock),
             activeSessionId: local.activeSessionId || external.activeSessionId,
             sessions: mergedSessions,
             sessionOrder,
@@ -463,6 +471,7 @@ export class PersistenceService {
         this.data.groupOrderModified = next.groupOrderModified || 0;
         this.data.sessionGroups = next.sessionGroups || {};
         this.data.deletedSessions = next.deletedSessions || {};
+        this.data.ribbonLock = next.ribbonLock || null;
 
         if (localActiveSessionId && this.data.sessions[localActiveSessionId]) {
             this.data.activeSessionId = localActiveSessionId;

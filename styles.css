@@ -1093,6 +1093,20 @@ body.wsmgr-session-list-dragging * {
     color: var(--text-muted);
 }
 
+/* Marks a workspace with a pinned window size; sits before the modified time. */
+.wsmgr-manager-item-pinned {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-right: 6px;
+    color: var(--text-muted);
+}
+
+.wsmgr-manager-item-pinned svg {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+}
+
 .wsmgr-manager-item-actions {
     display: flex;
     align-items: center;

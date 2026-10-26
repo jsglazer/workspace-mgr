@@ -5,6 +5,7 @@
 // last-writer-wins by modified time, duplicate-on-conflict).
 import type { HistoryEntry, Layout, Session, SessionData } from './types';
 import { layoutsEqual } from './layout-utils';
+import { normalizeRibbonLock } from './ribbon-lock';
 
 export function getPersistStamp(data: unknown): number {
     if (!data || typeof data !== 'object') return 0;
@@ -299,7 +300,7 @@ export function mergeDiscoveredSessions(
 // files stay behind as the local mirror/recovery copy.
 
 /** Session fields that travel over Sync. `history` is deliberately absent. */
-export const SYNCED_SESSION_FIELDS = ['id', 'name', 'layout', 'modified', 'isDefault'] as const;
+export const SYNCED_SESSION_FIELDS = ['id', 'name', 'layout', 'modified', 'isDefault', 'windowBounds'] as const;
 
 /** A copy of `session` carrying only the synced fields (drops `history`). */
 export function stripSessionHistory(session: Session): Session {
@@ -323,7 +324,12 @@ export function buildSyncedSessionPayload(data: Partial<SessionData>): Record<st
         if (!sessions[id]) continue;
         stripped[id] = stripSessionHistory(sessions[id]);
     }
+    // The ribbon lock rides with the sessions rather than the settings: settings
+    // are taken wholesale from whichever copy is newer, but the lock needs a
+    // proper merge so a lock made on one device isn't undone by the other.
+    const ribbonLock = normalizeRibbonLock(data.ribbonLock);
     return {
+        ...(ribbonLock ? { ribbonLock } : {}),
         activeSessionId: data.activeSessionId ?? null,
         sessions: stripped,
         sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],

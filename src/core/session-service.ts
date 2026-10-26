@@ -13,8 +13,10 @@ import { generateId } from './utils';
 import * as layoutUtils from './layout-utils';
 import { DEFAULT_DATA } from './default-data';
 import { recordSessionTombstone } from './sync';
+import { cloneHiddenItems, normalizeRibbonLock, withoutRibbon, type RibbonHiddenItems, type RibbonLock } from './ribbon-lock';
+import { normalizeWindowBounds, normalizeWindowRestoreMode, type WindowRestoreMode } from './window-bounds';
 import type { AppLike, CommandLike, NamePromptOptions } from './host';
-import type { Group, HistoryEntry, Layout, Session, SessionData } from './types';
+import type { Group, HistoryEntry, Layout, Session, SessionData, WindowBounds } from './types';
 
 const SESSION_SWITCH_NOTICE_DURATION_MS = 1200;
 
@@ -129,6 +131,8 @@ export class SessionService {
     ): void {
         onDiscard();
     }
+    /** Resize/move the main window to a pinned size (window adapter in the shell). */
+    restoreWindowBounds(_bounds: WindowBounds): void {}
 
     // ========================================================================
     // sessions.js — ordering, indices, active session, layout access
@@ -286,6 +290,9 @@ export class SessionService {
 
     layoutsEqualStructural(a: unknown, b: unknown): boolean {
         const restoreScope = this.getWorkspaceRestoreScope();
+        // While the ribbon is locked every layout shows the pinned ribbon, so a
+        // session's stale ribbon snapshot is not a change worth flagging.
+        if (this.isRibbonLocked()) return layoutUtils.layoutsEqualStructural(withoutRibbon(a), withoutRibbon(b), { restoreScope });
         return layoutUtils.layoutsEqualStructural(a, b, { restoreScope });
     }
 
@@ -627,6 +634,7 @@ export class SessionService {
         const newId = generateId();
         const layout = this.applyRibbonSyncToNewLayout(layoutUtils.cloneLayout(source.layout));
         this.data.sessions[newId] = this.createSessionRecord(newId, name, layout);
+        if (source.windowBounds) this.data.sessions[newId].windowBounds = { ...source.windowBounds };
         this.data.sessionOrder.push(newId);
         const groups = (this.data.sessionGroups || {})[sessionId];
         if (groups && groups.length > 0) {
@@ -639,10 +647,11 @@ export class SessionService {
     }
 
     // ========================================================================
-    // Ribbon sync — replicate one session's left-ribbon visibility to the rest.
-    // Obsidian only persists *which* ribbon icons are hidden, per saved layout
-    // (layout['left-ribbon'].hiddenItems); icon order is not persisted state
-    // anywhere the plugin can read or write, so only visibility is synced.
+    // Ribbon sync — replicate one session's left ribbon to the rest. Obsidian
+    // stores the ribbon per saved layout as layout['left-ribbon'].hiddenItems,
+    // and that map's key order IS the icon order (the ribbon sorts its items
+    // by it on load), so copying the map copies both order and visibility.
+    // The ribbon lock below supersedes this while it is on.
     // ========================================================================
     getRibbonHiddenItems(sessionId: string): Record<string, boolean> | null {
         const session = this.data.sessions[sessionId];
@@ -685,6 +694,87 @@ export class SessionService {
         const next: Layout = layout ? layoutUtils.cloneLayout(layout) : {};
         next['left-ribbon'] = { hiddenItems: { ...this.data.syncedRibbonHiddenItems } };
         return next;
+    }
+
+    // ========================================================================
+    // Ribbon lock — one pinned ribbon re-applied after every layout load. The
+    // shell does the applying (it owns the live ribbon); this owns the data.
+    // ========================================================================
+    getRibbonLock(): RibbonLock | null {
+        return normalizeRibbonLock(this.data.ribbonLock);
+    }
+
+    isRibbonLocked(): boolean {
+        const lock = this.getRibbonLock();
+        return !!(lock && lock.enabled);
+    }
+
+    /** Lock (or re-pin while locked) to `hiddenItems`, the live ribbon in order. */
+    lockRibbon(hiddenItems: RibbonHiddenItems): Promise<boolean> {
+        const pinned = cloneHiddenItems(hiddenItems);
+        if (Object.keys(pinned).length === 0) return Promise.resolve(false);
+        this.data.ribbonLock = { enabled: true, hiddenItems: pinned, modified: Date.now() };
+        // A fresh pin covers every live item, so nothing is "new" any more.
+        this.data.ribbonLockAnnouncedIds = [];
+        this.updateStatusBar();
+        return this.persistData().then(() => true);
+    }
+
+    unlockRibbon(): Promise<boolean> {
+        const lock = this.getRibbonLock();
+        if (!lock || !lock.enabled) return Promise.resolve(false);
+        this.data.ribbonLock = { enabled: false, hiddenItems: lock.hiddenItems, modified: Date.now() };
+        this.updateStatusBar();
+        return this.persistData().then(() => true);
+    }
+
+    isRibbonLockUnknownHidden(): boolean {
+        return this.data.ribbonLockUnknownItems !== 'shown';
+    }
+
+    setRibbonLockUnknownItems(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.ribbonLockUnknownItems = value === 'shown' ? 'shown' : 'hidden';
+        return this.persistIfNeeded(options);
+    }
+
+    /** Of `ids`, the ones not yet announced; records them as announced. */
+    takeUnannouncedRibbonIds(ids: string[]): string[] {
+        const announced = Array.isArray(this.data.ribbonLockAnnouncedIds) ? this.data.ribbonLockAnnouncedIds : [];
+        const fresh = ids.filter((id) => announced.indexOf(id) === -1);
+        if (fresh.length === 0) return [];
+        this.data.ribbonLockAnnouncedIds = announced.concat(fresh);
+        void this.persistData();
+        return fresh;
+    }
+
+    // ========================================================================
+    // Pinned window size — recorded only by an explicit pin, never by a save.
+    // ========================================================================
+    getWindowRestoreMode(): WindowRestoreMode {
+        return normalizeWindowRestoreMode(this.data.windowRestoreMode);
+    }
+
+    setWindowRestoreMode(value: string, options?: { persist?: boolean }): Promise<unknown> {
+        this.data.windowRestoreMode = normalizeWindowRestoreMode(value);
+        return this.persistIfNeeded(options);
+    }
+
+    pinWindowBounds(sessionId: string, bounds: WindowBounds): Promise<boolean> {
+        const session = this.data.sessions[sessionId];
+        const clean = normalizeWindowBounds(bounds);
+        if (!session || !clean) return Promise.resolve(false);
+        session.windowBounds = clean;
+        // Stamped so the change wins a Sync merge like any other session edit.
+        session.modified = Date.now();
+        return this.persistData().then(() => true);
+    }
+
+    clearWindowBounds(sessionId: string): Promise<boolean> {
+        const session = this.data.sessions[sessionId];
+        if (!session || !session.windowBounds) return Promise.resolve(false);
+        delete session.windowBounds;
+        session.modified = Date.now();
+        return this.persistData().then(() => true);
     }
 
     ensureDefaultSession(): void {
@@ -1140,6 +1230,9 @@ export class SessionService {
                 current.modified = Date.now();
             }
             this.data.activeSessionId = targetId;
+            // Size the window first so the layout renders at its final size.
+            const bounds = normalizeWindowBounds(target.windowBounds);
+            if (bounds) this.restoreWindowBounds(bounds);
             const applyLayout = target.layout ? this.applyWorkspaceLayout(target.layout) : Promise.resolve();
             return applyLayout
                 .then(() => {

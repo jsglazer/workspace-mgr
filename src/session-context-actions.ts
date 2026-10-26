@@ -35,6 +35,9 @@ interface ContextActionPlugin {
     deleteSession(sessionId: string): Promise<boolean>;
     restoreFromHistoryEntry(sessionId: string, entryIndex: number): Promise<boolean>;
     countPanesInLayout(layout: unknown): number;
+    canPinWindowSize?(): boolean;
+    pinWindowSize?(sessionId: string): Promise<boolean>;
+    clearWindowSize?(sessionId: string): Promise<boolean>;
 }
 
 export interface SessionContextActionOptions {
@@ -199,6 +202,16 @@ export function createSessionContextMenuOptions(options: SessionContextActionOpt
     function defaultCustomizeClicks() {
         return new CustomizeClicksModal(app, plugin).open();
     }
+    function defaultPinWindowSize() {
+        return callAfter(plugin.pinWindowSize!(session.id), () => refreshSessions(opts));
+    }
+    function defaultClearWindowSize() {
+        return callAfter(plugin.clearWindowSize!(session.id), () => refreshSessions(opts));
+    }
+    // Window-size actions exist only on desktop (where the plugin can reach the
+    // window); "Clear" only when there is something to clear.
+    const canPin = !!(plugin.canPinWindowSize && plugin.canPinWindowSize() && plugin.pinWindowSize);
+    const canClear = canPin && !!session.windowBounds && !!plugin.clearWindowSize;
 
     return {
         plugin,
@@ -225,6 +238,8 @@ export function createSessionContextMenuOptions(options: SessionContextActionOpt
         onRemoveFromGroup: opts.onRemoveFromGroup || defaultRemoveFromGroup,
         onMoveToGroup: opts.onMoveToGroup || defaultMoveToGroup,
         onVersionHistory: opts.onVersionHistory || defaultVersionHistory,
+        onPinWindowSize: canPin ? defaultPinWindowSize : undefined,
+        onClearWindowSize: canClear ? defaultClearWindowSize : undefined,
     };
 }
 

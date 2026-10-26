@@ -368,4 +368,20 @@ export interface Strings {
     noActiveMarkdownFile: string;
     savedCurrentNoteNameAsSession: LocaleFn;
     saveCurrentNoteNameAsSessionFailed: string;
+    cmdPinWindowSize: string;
+    cmdClearWindowSize: string;
+    contextPinWindowSize: string;
+    contextClearWindowSize: string;
+    windowSizePinnedIndicator: string;
+    windowSizePinned: LocaleFn;
+    windowSizeCleared: LocaleFn;
+    windowSizeUnavailable: string;
+    cmdRibbonLock: string;
+    cmdRibbonLockUpdate: string;
+    cmdRibbonUnlock: string;
+    ribbonLockLocked: string;
+    ribbonLockUpdated: string;
+    ribbonLockUnlocked: string;
+    ribbonLockRevertedNotice: string;
+    ribbonLockUnknownNotice: LocaleFn;
 }

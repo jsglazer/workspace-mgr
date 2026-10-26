@@ -33,6 +33,10 @@ export interface SessionContextMenuOptions {
     onRemoveFromGroup?: () => unknown;
     onMoveToGroup?: (groupId: string) => unknown;
     onVersionHistory?: () => unknown;
+    /** Present only where the window size can be pinned (desktop). */
+    onPinWindowSize?: () => unknown;
+    /** Present only when the session has a pinned window size. */
+    onClearWindowSize?: () => unknown;
 }
 
 export function openSessionContextMenu(options: SessionContextMenuOptions): void {
@@ -51,6 +55,8 @@ export function openSessionContextMenu(options: SessionContextMenuOptions): void
     item(L.contextDuplicateSession, 'copy', options.onDuplicate);
     item(L.contextRenameSession, 'pencil', options.onRename);
     item(L.contextVersionHistory, 'history', options.onVersionHistory);
+    item(L.contextPinWindowSize, 'app-window', options.onPinWindowSize);
+    item(L.contextClearWindowSize, 'x-square', options.onClearWindowSize);
 
     if (options.showMoveToGroup && options.onMoveToGroup && options.plugin.getOrderedGroups) {
         menu.addSeparator();

@@ -386,6 +386,22 @@ const main = {
         rotationBackupGeneration: function (count) { return count + ' session' + (count !== 1 ? 's' : ''); },
         frontmatterSessionNotFound: function (n) { return 'Session "' + n + '" not found (workspace-session)'; },
         frontmatterAlreadyActive: function (n) { return 'Session "' + n + '" is already active'; },
+        cmdPinWindowSize: 'Pin window size to current workspace',
+        cmdClearWindowSize: 'Clear pinned window size from current workspace',
+        contextPinWindowSize: 'Pin window size to this workspace',
+        contextClearWindowSize: 'Clear pinned window size',
+        windowSizePinnedIndicator: 'Window size pinned',
+        windowSizePinned: function (n, w, h) { return 'Pinned window size ' + w + '×' + h + ' to "' + n + '"'; },
+        windowSizeCleared: function (n) { return 'Cleared the pinned window size of "' + n + '"'; },
+        windowSizeUnavailable: 'Could not read the window size.',
+        cmdRibbonLock: 'Lock ribbon to current layout',
+        cmdRibbonLockUpdate: 'Update locked ribbon from current',
+        cmdRibbonUnlock: 'Unlock ribbon',
+        ribbonLockLocked: 'Ribbon locked to its current layout.',
+        ribbonLockUpdated: 'Locked ribbon updated from the current ribbon.',
+        ribbonLockUnlocked: 'Ribbon unlocked.',
+        ribbonLockRevertedNotice: "Ribbon is locked — use 'Update locked ribbon from current' to keep changes",
+        ribbonLockUnknownNotice: function (names) { return 'New ribbon icons, not in the locked ribbon, were added at the end: ' + names + ". Use 'Update locked ribbon from current' to include them."; },
 };
 
 const restore = {

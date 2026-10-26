@@ -288,6 +288,12 @@ export default class SessionManagerModal extends Modal {
 
         const info = row.createDiv({ cls: 'wsmgr-manager-item-info' });
         info.createSpan({ cls: 'wsmgr-manager-item-name', text: session.name });
+        if (session.windowBounds) {
+            const pinnedEl = info.createSpan({ cls: 'wsmgr-manager-item-pinned' });
+            setIcon(pinnedEl, 'app-window');
+            const b = session.windowBounds;
+            pinnedEl.setAttribute('aria-label', `${L.windowSizePinnedIndicator} (${b.width}×${b.height})`);
+        }
         if (typeof session.modified === 'number') {
             info.createSpan({ cls: 'wsmgr-manager-item-time', text: formatRelativeTime(session.modified) });
         }

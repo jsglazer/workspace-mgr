@@ -518,6 +518,28 @@ var main = {
   },
   frontmatterAlreadyActive: function(n) {
     return 'Session "' + n + '" is already active';
+  },
+  cmdPinWindowSize: "Pin window size to current workspace",
+  cmdClearWindowSize: "Clear pinned window size from current workspace",
+  contextPinWindowSize: "Pin window size to this workspace",
+  contextClearWindowSize: "Clear pinned window size",
+  windowSizePinnedIndicator: "Window size pinned",
+  windowSizePinned: function(n, w, h) {
+    return "Pinned window size " + w + "\xD7" + h + ' to "' + n + '"';
+  },
+  windowSizeCleared: function(n) {
+    return 'Cleared the pinned window size of "' + n + '"';
+  },
+  windowSizeUnavailable: "Could not read the window size.",
+  cmdRibbonLock: "Lock ribbon to current layout",
+  cmdRibbonLockUpdate: "Update locked ribbon from current",
+  cmdRibbonUnlock: "Unlock ribbon",
+  ribbonLockLocked: "Ribbon locked to its current layout.",
+  ribbonLockUpdated: "Locked ribbon updated from the current ribbon.",
+  ribbonLockUnlocked: "Ribbon unlocked.",
+  ribbonLockRevertedNotice: "Ribbon is locked \u2014 use 'Update locked ribbon from current' to keep changes",
+  ribbonLockUnknownNotice: function(names) {
+    return "New ribbon icons, not in the locked ribbon, were added at the end: " + names + ". Use 'Update locked ribbon from current' to include them.";
   }
 };
 var restore = {
@@ -10183,6 +10205,9 @@ var DEFAULT_DATA = {
   menuBarNameColorDark: "",
   ribbonSyncToFutureSessions: false,
   syncedRibbonHiddenItems: null,
+  ribbonLockUnknownItems: "hidden",
+  ribbonLockAnnouncedIds: [],
+  windowRestoreMode: "size",
   showFilterInput: false,
   overlayDefaultFocus: "current-session",
   showActiveSwitchCommand: false,
@@ -10229,6 +10254,64 @@ var DEFAULT_DATA = {
     shiftRightClick: "none"
   }
 };
+
+// src/core/ribbon-lock.ts
+function cloneHiddenItems(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const id2 of Object.keys(raw)) {
+    out[id2] = raw[id2] === true;
+  }
+  return out;
+}
+function normalizeRibbonLock(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw;
+  const hiddenItems = cloneHiddenItems(r.hiddenItems);
+  if (Object.keys(hiddenItems).length === 0) return null;
+  const modified = typeof r.modified === "number" && isFinite(r.modified) ? r.modified : 0;
+  return { enabled: r.enabled === true, hiddenItems, modified };
+}
+function mergeRibbonLock(local, external) {
+  const a = normalizeRibbonLock(local);
+  const b = normalizeRibbonLock(external);
+  if (!a) return b;
+  if (!b) return a;
+  return b.modified > a.modified ? b : a;
+}
+function buildLockedRibbon(pin, liveIds, unknownHidden) {
+  const hiddenItems = {};
+  for (const id2 of Object.keys(pin)) hiddenItems[id2] = pin[id2] === true;
+  const unknownIds = [];
+  for (const id2 of liveIds) {
+    if (Object.prototype.hasOwnProperty.call(hiddenItems, id2)) continue;
+    hiddenItems[id2] = unknownHidden;
+    unknownIds.push(id2);
+  }
+  return { hiddenItems, unknownIds };
+}
+function ribbonMatches(live, expected) {
+  const liveIds = Object.keys(live);
+  const expectedIds = Object.keys(expected).filter((id2) => Object.prototype.hasOwnProperty.call(live, id2));
+  if (liveIds.length !== expectedIds.length) return false;
+  for (let i = 0; i < liveIds.length; i++) {
+    if (liveIds[i] !== expectedIds[i]) return false;
+    if (live[liveIds[i]] === true !== (expected[expectedIds[i]] === true)) return false;
+  }
+  return true;
+}
+function stampRibbonIntoLayout(layout, hiddenItems) {
+  const next = { ...layout };
+  next["left-ribbon"] = { hiddenItems: { ...hiddenItems } };
+  return next;
+}
+function withoutRibbon(layout) {
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return layout;
+  if (!Object.prototype.hasOwnProperty.call(layout, "left-ribbon")) return layout;
+  const next = { ...layout };
+  delete next["left-ribbon"];
+  return next;
+}
 
 // src/core/sync.ts
 function getPersistStamp(data) {
@@ -10394,7 +10477,7 @@ function mergeDiscoveredSessions(data, discovered, options = { generateId: () =>
   }
   return { merged, addedOrphanIds, conflictIds };
 }
-var SYNCED_SESSION_FIELDS = ["id", "name", "layout", "modified", "isDefault"];
+var SYNCED_SESSION_FIELDS = ["id", "name", "layout", "modified", "isDefault", "windowBounds"];
 function stripSessionHistory(session) {
   const out = {};
   const src = session;
@@ -10411,7 +10494,9 @@ function buildSyncedSessionPayload(data) {
     if (!sessions[id2]) continue;
     stripped[id2] = stripSessionHistory(sessions[id2]);
   }
+  const ribbonLock = normalizeRibbonLock(data.ribbonLock);
   return {
+    ...ribbonLock ? { ribbonLock } : {},
     activeSessionId: (_a = data.activeSessionId) != null ? _a : null,
     sessions: stripped,
     sessionOrder: Array.isArray(data.sessionOrder) ? cloneJson(data.sessionOrder) : [],
@@ -10442,6 +10527,69 @@ function collectSessionHistory(data) {
     if (Array.isArray(history) && history.length > 0) out[id2] = history;
   }
   return out;
+}
+
+// src/core/window-bounds.ts
+function normalizeWindowRestoreMode(value) {
+  return value === "size-location" ? "size-location" : "size";
+}
+function finiteInt(value) {
+  return typeof value === "number" && isFinite(value) ? Math.round(value) : null;
+}
+function normalizeWindowBounds(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw;
+  const x = finiteInt(r.x);
+  const y = finiteInt(r.y);
+  const width = finiteInt(r.width);
+  const height = finiteInt(r.height);
+  if (x === null || y === null || width === null || height === null) return null;
+  if (width <= 0 || height <= 0) return null;
+  const out = { x, y, width, height };
+  if (r.maximized === true) out.maximized = true;
+  if (r.fullScreen === true) out.fullScreen = true;
+  return out;
+}
+function overlapArea(a, b) {
+  const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+function centerDistance(a, b) {
+  const dx = a.x + a.width / 2 - (b.x + b.width / 2);
+  const dy = a.y + a.height / 2 - (b.y + b.height / 2);
+  return dx * dx + dy * dy;
+}
+function pickWorkArea(rect, workAreas) {
+  if (workAreas.length === 0) return null;
+  let best = workAreas[0];
+  let bestOverlap = overlapArea(rect, best);
+  for (const area of workAreas.slice(1)) {
+    const overlap = overlapArea(rect, area);
+    if (overlap > bestOverlap) {
+      best = area;
+      bestOverlap = overlap;
+    }
+  }
+  if (bestOverlap > 0) return best;
+  let nearest = workAreas[0];
+  for (const area of workAreas.slice(1)) {
+    if (centerDistance(rect, area) < centerDistance(rect, nearest)) nearest = area;
+  }
+  return nearest;
+}
+function fitRectToWorkAreas(rect, workAreas) {
+  const area = pickWorkArea(rect, workAreas);
+  if (!area) return { ...rect };
+  const width = Math.min(rect.width, area.width);
+  const height = Math.min(rect.height, area.height);
+  const x = Math.min(Math.max(rect.x, area.x), area.x + area.width - width);
+  const y = Math.min(Math.max(rect.y, area.y), area.y + area.height - height);
+  return { x, y, width, height };
+}
+function resolveTargetRect(pinned, current, mode, workAreas) {
+  const wanted = mode === "size-location" ? { x: pinned.x, y: pinned.y, width: pinned.width, height: pinned.height } : { x: current.x, y: current.y, width: pinned.width, height: pinned.height };
+  return fitRectToWorkAreas(wanted, workAreas);
 }
 
 // src/core/session-service.ts
@@ -10514,6 +10662,9 @@ var SessionService = class {
    */
   openUnsavedSwitchModal(_message, _onSave, onDiscard, _onCancel) {
     onDiscard();
+  }
+  /** Resize/move the main window to a pinned size (window adapter in the shell). */
+  restoreWindowBounds(_bounds) {
   }
   // ========================================================================
   // sessions.js — ordering, indices, active session, layout access
@@ -10650,6 +10801,7 @@ var SessionService = class {
   }
   layoutsEqualStructural(a, b) {
     const restoreScope = this.getWorkspaceRestoreScope();
+    if (this.isRibbonLocked()) return layoutsEqualStructural(withoutRibbon(a), withoutRibbon(b), { restoreScope });
     return layoutsEqualStructural(a, b, { restoreScope });
   }
   // ========================================================================
@@ -10944,6 +11096,7 @@ var SessionService = class {
     const newId = generateId();
     const layout = this.applyRibbonSyncToNewLayout(cloneLayout(source.layout));
     this.data.sessions[newId] = this.createSessionRecord(newId, name, layout);
+    if (source.windowBounds) this.data.sessions[newId].windowBounds = { ...source.windowBounds };
     this.data.sessionOrder.push(newId);
     const groups = (this.data.sessionGroups || {})[sessionId];
     if (groups && groups.length > 0) {
@@ -10955,10 +11108,11 @@ var SessionService = class {
     return this.persistData();
   }
   // ========================================================================
-  // Ribbon sync — replicate one session's left-ribbon visibility to the rest.
-  // Obsidian only persists *which* ribbon icons are hidden, per saved layout
-  // (layout['left-ribbon'].hiddenItems); icon order is not persisted state
-  // anywhere the plugin can read or write, so only visibility is synced.
+  // Ribbon sync — replicate one session's left ribbon to the rest. Obsidian
+  // stores the ribbon per saved layout as layout['left-ribbon'].hiddenItems,
+  // and that map's key order IS the icon order (the ribbon sorts its items
+  // by it on load), so copying the map copies both order and visibility.
+  // The ribbon lock below supersedes this while it is on.
   // ========================================================================
   getRibbonHiddenItems(sessionId) {
     var _a;
@@ -10994,6 +11148,74 @@ var SessionService = class {
     const next = layout ? cloneLayout(layout) : {};
     next["left-ribbon"] = { hiddenItems: { ...this.data.syncedRibbonHiddenItems } };
     return next;
+  }
+  // ========================================================================
+  // Ribbon lock — one pinned ribbon re-applied after every layout load. The
+  // shell does the applying (it owns the live ribbon); this owns the data.
+  // ========================================================================
+  getRibbonLock() {
+    return normalizeRibbonLock(this.data.ribbonLock);
+  }
+  isRibbonLocked() {
+    const lock = this.getRibbonLock();
+    return !!(lock && lock.enabled);
+  }
+  /** Lock (or re-pin while locked) to `hiddenItems`, the live ribbon in order. */
+  lockRibbon(hiddenItems) {
+    const pinned = cloneHiddenItems(hiddenItems);
+    if (Object.keys(pinned).length === 0) return Promise.resolve(false);
+    this.data.ribbonLock = { enabled: true, hiddenItems: pinned, modified: Date.now() };
+    this.data.ribbonLockAnnouncedIds = [];
+    this.updateStatusBar();
+    return this.persistData().then(() => true);
+  }
+  unlockRibbon() {
+    const lock = this.getRibbonLock();
+    if (!lock || !lock.enabled) return Promise.resolve(false);
+    this.data.ribbonLock = { enabled: false, hiddenItems: lock.hiddenItems, modified: Date.now() };
+    this.updateStatusBar();
+    return this.persistData().then(() => true);
+  }
+  isRibbonLockUnknownHidden() {
+    return this.data.ribbonLockUnknownItems !== "shown";
+  }
+  setRibbonLockUnknownItems(value, options) {
+    this.data.ribbonLockUnknownItems = value === "shown" ? "shown" : "hidden";
+    return this.persistIfNeeded(options);
+  }
+  /** Of `ids`, the ones not yet announced; records them as announced. */
+  takeUnannouncedRibbonIds(ids) {
+    const announced = Array.isArray(this.data.ribbonLockAnnouncedIds) ? this.data.ribbonLockAnnouncedIds : [];
+    const fresh = ids.filter((id2) => announced.indexOf(id2) === -1);
+    if (fresh.length === 0) return [];
+    this.data.ribbonLockAnnouncedIds = announced.concat(fresh);
+    void this.persistData();
+    return fresh;
+  }
+  // ========================================================================
+  // Pinned window size — recorded only by an explicit pin, never by a save.
+  // ========================================================================
+  getWindowRestoreMode() {
+    return normalizeWindowRestoreMode(this.data.windowRestoreMode);
+  }
+  setWindowRestoreMode(value, options) {
+    this.data.windowRestoreMode = normalizeWindowRestoreMode(value);
+    return this.persistIfNeeded(options);
+  }
+  pinWindowBounds(sessionId, bounds) {
+    const session = this.data.sessions[sessionId];
+    const clean = normalizeWindowBounds(bounds);
+    if (!session || !clean) return Promise.resolve(false);
+    session.windowBounds = clean;
+    session.modified = Date.now();
+    return this.persistData().then(() => true);
+  }
+  clearWindowBounds(sessionId) {
+    const session = this.data.sessions[sessionId];
+    if (!session || !session.windowBounds) return Promise.resolve(false);
+    delete session.windowBounds;
+    session.modified = Date.now();
+    return this.persistData().then(() => true);
   }
   ensureDefaultSession() {
     const hasDefault = Object.values(this.data.sessions).some((s) => s.isDefault);
@@ -11372,6 +11594,8 @@ var SessionService = class {
         current.modified = Date.now();
       }
       this.data.activeSessionId = targetId;
+      const bounds = normalizeWindowBounds(target.windowBounds);
+      if (bounds) this.restoreWindowBounds(bounds);
       const applyLayout = target.layout ? this.applyWorkspaceLayout(target.layout) : Promise.resolve();
       return applyLayout.then(() => {
         this.updateStatusBar();
@@ -12184,7 +12408,8 @@ var SESSION_KEYS = [
   "groupOrderModified",
   "sessionGroups",
   "activeGroupId",
-  "deletedSessions"
+  "deletedSessions",
+  "ribbonLock"
 ];
 var SETTINGS_KEYS = [
   "language",
@@ -12223,6 +12448,9 @@ var SETTINGS_KEYS = [
   "unsavedHighlightColorDark",
   "ribbonSyncToFutureSessions",
   "syncedRibbonHiddenItems",
+  "ribbonLockUnknownItems",
+  "ribbonLockAnnouncedIds",
+  "windowRestoreMode",
   "menuBarNameColorLight",
   "menuBarNameColorDark"
 ];
@@ -12375,7 +12603,9 @@ var PersistenceService = class {
       if (validGids.length > 0) sessionGroupsCleaned[sid] = validGids;
     }
     const activeGroupId = raw && typeof raw.activeGroupId === "string" && groups[raw.activeGroupId] ? raw.activeGroupId : null;
+    const ribbonLock = normalizeRibbonLock(raw && raw.ribbonLock);
     return {
+      ...ribbonLock ? { ribbonLock } : {},
       activeSessionId: active,
       sessions,
       sessionOrder: order,
@@ -12506,6 +12736,7 @@ var PersistenceService = class {
     const sessionOrder = sessionWinner === "local" ? mergeOrder(local.sessionOrder, external.sessionOrder, mergedSessions) : mergeOrder(external.sessionOrder, local.sessionOrder, mergedSessions);
     const groupOrder = groupWinner === "local" ? mergeOrderWithWinner(local.groupOrder, external.groupOrder, groups, [UNGROUPED_ORDER_ID]) : mergeOrderWithWinner(external.groupOrder, local.groupOrder, groups, [UNGROUPED_ORDER_ID]);
     return this.normalizeSessionData({
+      ribbonLock: mergeRibbonLock(local.ribbonLock, external.ribbonLock),
       activeSessionId: local.activeSessionId || external.activeSessionId,
       sessions: mergedSessions,
       sessionOrder,
@@ -12532,6 +12763,7 @@ var PersistenceService = class {
     this.data.groupOrderModified = next.groupOrderModified || 0;
     this.data.sessionGroups = next.sessionGroups || {};
     this.data.deletedSessions = next.deletedSessions || {};
+    this.data.ribbonLock = next.ribbonLock || null;
     if (localActiveSessionId && this.data.sessions[localActiveSessionId]) {
       this.data.activeSessionId = localActiveSessionId;
     } else if (next.activeSessionId && this.data.sessions[next.activeSessionId]) {
@@ -13238,6 +13470,236 @@ function createMenuBarAdapter() {
   }
 }
 
+// src/adapter/window-adapter.ts
+function resolveElectron() {
+  for (const moduleName of ["@electron/remote", "electron"]) {
+    try {
+      const mod = require(moduleName);
+      const remote = mod.remote || mod;
+      const getCurrentWindow = remote.getCurrentWindow;
+      const screen = remote.screen;
+      if (typeof getCurrentWindow === "function" && screen && getCurrentWindow()) {
+        return { getCurrentWindow: () => getCurrentWindow(), screen };
+      }
+    } catch (e) {
+    }
+  }
+  return null;
+}
+function createWindowAdapter() {
+  const electron = resolveElectron();
+  if (!electron) return null;
+  const workAreas = () => electron.screen.getAllDisplays().map((d) => d.workArea);
+  const setRect = (win, bounds, mode) => {
+    const rect = resolveTargetRect(bounds, win.getBounds(), mode, workAreas());
+    win.setBounds(rect);
+  };
+  return {
+    captureBounds() {
+      try {
+        const win = electron.getCurrentWindow();
+        if (!win) return null;
+        const maximized = win.isMaximized();
+        const fullScreen = win.isFullScreen();
+        const rect = maximized || fullScreen ? win.getNormalBounds() : win.getBounds();
+        const out = {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        };
+        if (maximized) out.maximized = true;
+        if (fullScreen) out.fullScreen = true;
+        return out;
+      } catch (e) {
+        return null;
+      }
+    },
+    applyBounds(bounds, mode) {
+      try {
+        const win = electron.getCurrentWindow();
+        if (!win) return;
+        if (mode === "size") {
+          if (win.isFullScreen()) return;
+          if (win.isMaximized()) win.unmaximize();
+          setRect(win, bounds, mode);
+          return;
+        }
+        const finish = () => {
+          try {
+            if (win.isMaximized() && !bounds.maximized) win.unmaximize();
+            setRect(win, bounds, mode);
+            if (bounds.fullScreen) win.setFullScreen(true);
+            else if (bounds.maximized) win.maximize();
+          } catch (e) {
+          }
+        };
+        if (win.isFullScreen() && !bounds.fullScreen) {
+          win.once("leave-full-screen", finish);
+          win.setFullScreen(false);
+          return;
+        }
+        if (win.isFullScreen() && bounds.fullScreen) return;
+        finish();
+      } catch (e) {
+      }
+    }
+  };
+}
+
+// src/adapter/ribbon-adapter.ts
+function getLeftRibbon(app) {
+  const ribbon = app.workspace.leftRibbon;
+  if (!ribbon || !Array.isArray(ribbon.items)) return null;
+  if (typeof ribbon.serialize !== "function" || typeof ribbon.load !== "function") return null;
+  return ribbon;
+}
+function createRibbonAdapter(app) {
+  if (!getLeftRibbon(app)) return null;
+  return {
+    getHiddenItems() {
+      try {
+        const ribbon = getLeftRibbon(app);
+        return ribbon ? cloneHiddenItems(ribbon.serialize().hiddenItems) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getLiveIds() {
+      try {
+        const ribbon = getLeftRibbon(app);
+        return ribbon ? ribbon.items.filter((item) => !!item.buttonEl).map((item) => item.id) : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    getTitle(id2) {
+      var _a;
+      try {
+        const item = (_a = getLeftRibbon(app)) == null ? void 0 : _a.items.find((i) => i.id === id2);
+        return item && item.title || id2;
+      } catch (e) {
+        return id2;
+      }
+    },
+    apply(hiddenItems) {
+      try {
+        const ribbon = getLeftRibbon(app);
+        if (!ribbon) return;
+        ribbon.load({ hiddenItems: { ...hiddenItems } });
+        app.workspace.requestSaveLayout();
+      } catch (e) {
+      }
+    },
+    getItemsEl() {
+      var _a;
+      try {
+        return ((_a = getLeftRibbon(app)) == null ? void 0 : _a.ribbonItemsEl) || null;
+      } catch (e) {
+        return null;
+      }
+    }
+  };
+}
+
+// src/ribbon-lock-controller.ts
+var LAYOUT_LOAD_GRACE_MS = 1e3;
+var SELF_APPLY_GRACE_MS = 300;
+var HAND_EDIT_SETTLE_MS = 400;
+var RibbonLockController = class {
+  constructor(session, adapter, notify) {
+    this.session = session;
+    this.adapter = adapter;
+    this.notify = notify;
+    this.applyingUntil = 0;
+    this.layoutChangedAt = 0;
+    this.observer = null;
+    this.handEditTimer = null;
+  }
+  /** The ribbon the lock wants right now, or null while unlocked. */
+  expected() {
+    const lock = this.session.getRibbonLock();
+    if (!lock || !lock.enabled) return null;
+    return buildLockedRibbon(lock.hiddenItems, this.adapter.getLiveIds(), this.session.isRibbonLockUnknownHidden());
+  }
+  /** `layout` with the locked ribbon written in; unchanged while unlocked. */
+  stampLayout(layout) {
+    if (!layout || typeof layout !== "object") return layout;
+    const expected = this.expected();
+    return expected ? stampRibbonIntoLayout(layout, expected.hiddenItems) : layout;
+  }
+  /** Lock to (or, while locked, re-pin from) the live ribbon. */
+  lockFromCurrent() {
+    const live = this.adapter.getHiddenItems();
+    if (!live) return Promise.resolve(false);
+    return this.session.lockRibbon(live);
+  }
+  /** Start enforcing; call once the workspace layout is ready. */
+  start() {
+    this.enforce("startup");
+    const el = this.adapter.getItemsEl();
+    if (!el || typeof MutationObserver === "undefined") return;
+    this.observer = new MutationObserver(() => this.onRibbonRedrawn());
+    this.observer.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+  }
+  stop() {
+    if (this.observer) this.observer.disconnect();
+    this.observer = null;
+    if (this.handEditTimer !== null) window.clearTimeout(this.handEditTimer);
+    this.handEditTimer = null;
+  }
+  noteLayoutChange() {
+    this.layoutChangedAt = Date.now();
+    this.enforce("layout");
+  }
+  noteExternalChange() {
+    this.enforce("external");
+  }
+  onRibbonRedrawn() {
+    if (Date.now() < this.applyingUntil) return;
+    if (this.handEditTimer !== null) window.clearTimeout(this.handEditTimer);
+    this.handEditTimer = window.setTimeout(() => {
+      this.handEditTimer = null;
+      const fromLayout = this.session.isSwitchingSession || Date.now() - this.layoutChangedAt < LAYOUT_LOAD_GRACE_MS;
+      this.enforce(fromLayout ? "layout" : "hand-edit");
+    }, HAND_EDIT_SETTLE_MS);
+  }
+  /** Bring the live ribbon back to the lock. Returns true if it had to change anything. */
+  enforce(source) {
+    const expected = this.expected();
+    if (!expected) return false;
+    this.announceUnknown(expected.unknownIds);
+    const live = this.adapter.getHiddenItems();
+    if (!live || ribbonMatches(live, expected.hiddenItems)) return false;
+    const handEdited = source === "hand-edit" && !this.onlyUnknownItemsDiffer(live);
+    this.applyingUntil = Date.now() + SELF_APPLY_GRACE_MS;
+    this.adapter.apply(expected.hiddenItems);
+    if (handEdited) this.notify(L.ribbonLockRevertedNotice, 8e3);
+    return true;
+  }
+  /**
+   * True when the pinned items are already in pinned order and visibility, so
+   * the mismatch is only a newly added icon taking its place — not something
+   * the user did by hand.
+   */
+  onlyUnknownItemsDiffer(live) {
+    const lock = this.session.getRibbonLock();
+    if (!lock) return true;
+    const knownLive = {};
+    for (const id2 of Object.keys(live)) {
+      if (Object.prototype.hasOwnProperty.call(lock.hiddenItems, id2)) knownLive[id2] = live[id2];
+    }
+    return ribbonMatches(knownLive, lock.hiddenItems);
+  }
+  announceUnknown(unknownIds) {
+    if (unknownIds.length === 0) return;
+    const fresh = this.session.takeUnannouncedRibbonIds(unknownIds);
+    if (fresh.length === 0) return;
+    const names = fresh.map((id2) => this.adapter.getTitle(id2)).join(", ");
+    this.notify(L.ribbonLockUnknownNotice(names), 15e3);
+  }
+};
+
 // src/session-statusbar.ts
 var import_obsidian2 = require("obsidian");
 function renderStatusBar(host) {
@@ -13375,6 +13837,8 @@ function openSessionContextMenu(options) {
   item(L2.contextDuplicateSession, "copy", options.onDuplicate);
   item(L2.contextRenameSession, "pencil", options.onRename);
   item(L2.contextVersionHistory, "history", options.onVersionHistory);
+  item(L2.contextPinWindowSize, "app-window", options.onPinWindowSize);
+  item(L2.contextClearWindowSize, "x-square", options.onClearWindowSize);
   if (options.showMoveToGroup && options.onMoveToGroup && options.plugin.getOrderedGroups) {
     menu.addSeparator();
     for (const group of options.plugin.getOrderedGroups()) {
@@ -13761,6 +14225,14 @@ function createSessionContextMenuOptions(options) {
   function defaultCustomizeClicks() {
     return new CustomizeClicksModal(app, plugin).open();
   }
+  function defaultPinWindowSize() {
+    return callAfter(plugin.pinWindowSize(session.id), () => refreshSessions(opts));
+  }
+  function defaultClearWindowSize() {
+    return callAfter(plugin.clearWindowSize(session.id), () => refreshSessions(opts));
+  }
+  const canPin = !!(plugin.canPinWindowSize && plugin.canPinWindowSize() && plugin.pinWindowSize);
+  const canClear = canPin && !!session.windowBounds && !!plugin.clearWindowSize;
   return {
     plugin,
     app,
@@ -13785,7 +14257,9 @@ function createSessionContextMenuOptions(options) {
     onDelete: opts.onDelete || defaultDelete,
     onRemoveFromGroup: opts.onRemoveFromGroup || defaultRemoveFromGroup,
     onMoveToGroup: opts.onMoveToGroup || defaultMoveToGroup,
-    onVersionHistory: opts.onVersionHistory || defaultVersionHistory
+    onVersionHistory: opts.onVersionHistory || defaultVersionHistory,
+    onPinWindowSize: canPin ? defaultPinWindowSize : void 0,
+    onClearWindowSize: canClear ? defaultClearWindowSize : void 0
   };
 }
 function openSessionContextMenu2(options) {
@@ -14003,6 +14477,12 @@ var SessionManagerModal = class extends import_obsidian10.Modal {
     if (session.id === this.plugin.data.activeSessionId) row.addClass("is-active");
     const info = row.createDiv({ cls: "wsmgr-manager-item-info" });
     info.createSpan({ cls: "wsmgr-manager-item-name", text: session.name });
+    if (session.windowBounds) {
+      const pinnedEl = info.createSpan({ cls: "wsmgr-manager-item-pinned" });
+      (0, import_obsidian10.setIcon)(pinnedEl, "app-window");
+      const b = session.windowBounds;
+      pinnedEl.setAttribute("aria-label", `${L2.windowSizePinnedIndicator} (${b.width}\xD7${b.height})`);
+    }
     if (typeof session.modified === "number") {
       info.createSpan({ cls: "wsmgr-manager-item-time", text: formatRelativeTime(session.modified) });
     }
@@ -14316,6 +14796,7 @@ var UnsavedSwitchModal = class extends import_obsidian11.Modal {
 
 // src/workspace-menu.ts
 var import_obsidian12 = require("obsidian");
+var PINNED_WINDOW_ICON = "app-window";
 var UNGROUPED_ORDER_ID3 = "__all__";
 function addGroupedSessionItems(menu, plugin, options) {
   const L2 = L;
@@ -14327,6 +14808,7 @@ function addGroupedSessionItems(menu, plugin, options) {
       item.setTitle(session.name).onClick((evt) => void options.onPick(session, evt));
       if (options.checkActive) item.setChecked(session.id === activeId);
       if (options.icon) item.setIcon(options.icon);
+      else if (session.windowBounds) item.setIcon(PINNED_WINDOW_ICON);
     });
     added++;
   };
@@ -14414,6 +14896,8 @@ function buildWorkspaceMenu(plugin) {
     add(L2.contextRenameSession, "pencil", () => actions.onRename());
     add(L2.contextDuplicateSession, "copy", () => actions.onDuplicate());
     add(L2.contextVersionHistory, "history", () => actions.onVersionHistory());
+    if (actions.onPinWindowSize) add(L2.contextPinWindowSize, PINNED_WINDOW_ICON, () => actions.onPinWindowSize());
+    if (actions.onClearWindowSize) add(L2.contextClearWindowSize, "x-square", () => actions.onClearWindowSize());
     const groups = plugin.isGroupFeatureEnabled() ? plugin.getOrderedGroups() : [];
     if (groups.length > 0) {
       add(
@@ -14873,11 +15357,46 @@ var WorkspaceMgrSettingTab = class extends import_obsidian15.PluginSettingTab {
       })
     );
     new import_obsidian15.Setting(containerEl).setName("Ribbon").setHeading();
-    {
+    if (this.host.canLockRibbon()) {
+      const locked = this.host.session.isRibbonLocked();
+      const lockSetting = new import_obsidian15.Setting(containerEl).setName(L2.cmdRibbonLock).setDesc(
+        locked ? "Locked. Every workspace switch, layout load and restart puts the left ribbon back to the locked icon order and visibility. Hand edits are undone \u2014 update the lock to keep them." : "Freeze the left ribbon as it is now (icon order and which icons are hidden), so switching workspaces can no longer change it. Every saved layout carries its own ribbon snapshot; while locked, they all get this one instead."
+      );
+      if (locked) {
+        lockSetting.addButton(
+          (b) => b.setButtonText(L2.cmdRibbonLockUpdate).onClick(async () => {
+            await this.host.lockRibbon();
+            this.display();
+          })
+        ).addButton(
+          (b) => b.setButtonText(L2.cmdRibbonUnlock).onClick(async () => {
+            await this.host.unlockRibbon();
+            this.display();
+          })
+        );
+      } else {
+        lockSetting.addButton(
+          (b) => b.setButtonText("Lock ribbon").setCta().onClick(async () => {
+            await this.host.lockRibbon();
+            this.display();
+          })
+        );
+      }
+      new import_obsidian15.Setting(containerEl).setName("Icons not in the lock").setDesc(
+        "How icons the lock does not know about (a newly installed plugin, a renamed command) appear. They are always added at the end of the ribbon, and a notice names them once."
+      ).addDropdown((d) => {
+        d.addOption("hidden", "Hidden");
+        d.addOption("shown", "Shown");
+        d.setValue(this.host.session.isRibbonLockUnknownHidden() ? "hidden" : "shown").onChange(async (v) => {
+          await this.host.session.setRibbonLockUnknownItems(v);
+        });
+      });
+    }
+    if (!this.host.session.isRibbonLocked()) {
       const allSessions = this.host.session.getOrderedSessionsUnfiltered();
       let ribbonSourceId = allSessions.some((s) => s.id === data.activeSessionId) ? data.activeSessionId : ((_a = allSessions[0]) == null ? void 0 : _a.id) || "";
       new import_obsidian15.Setting(containerEl).setName("Sync left ribbon").setDesc(
-        "Replicate the selected workspace's left-ribbon icon visibility to every other workspace. Obsidian doesn't store icon order, so only which icons are shown or hidden is synced."
+        "Copy the selected workspace's saved left ribbon (icon order and which icons are hidden) into every other workspace. A one-time copy; the lock above keeps the ribbon fixed instead."
       ).addDropdown((d) => {
         for (const s of allSessions) d.addOption(s.id, s.name);
         if (ribbonSourceId) d.setValue(ribbonSourceId);
@@ -14885,7 +15404,7 @@ var WorkspaceMgrSettingTab = class extends import_obsidian15.PluginSettingTab {
           ribbonSourceId = v;
         });
       }).addButton(
-        (b) => b.setButtonText("Sync now").setCta().onClick(async () => {
+        (b) => b.setButtonText("Sync now").onClick(async () => {
           if (!ribbonSourceId) return;
           const ok = await this.host.session.syncRibbonFromSession(ribbonSourceId);
           new import_obsidian15.Notice(
@@ -14893,11 +15412,23 @@ var WorkspaceMgrSettingTab = class extends import_obsidian15.PluginSettingTab {
           );
         })
       );
-      new import_obsidian15.Setting(containerEl).setName("Also sync new workspaces automatically").setDesc("Apply the same ribbon visibility whenever a new workspace is created.").addToggle(
+      new import_obsidian15.Setting(containerEl).setName("Also sync new workspaces automatically").setDesc("Give every new workspace the same ribbon order and visibility.").addToggle(
         (t) => t.setValue(!!data.ribbonSyncToFutureSessions).onChange(async (v) => {
           await this.host.session.setRibbonSyncToFutureSessions(v);
         })
       );
+    }
+    if (this.host.canPinWindowSize()) {
+      new import_obsidian15.Setting(containerEl).setName("Window size").setHeading();
+      new import_obsidian15.Setting(containerEl).setName("Restore pinned window").setDesc(
+        `A workspace remembers Obsidian's window size only after "` + L2.contextPinWindowSize + `" (workspace menu, a workspace's right-click menu, or the command palette); switching to it then restores that size. "Size + location" also moves the window back, and re-maximizes or re-enters full screen if it was pinned that way. A window pinned on a display that is no longer attached is brought onto a visible one. Main window only.`
+      ).addDropdown((d) => {
+        d.addOption("size", "Size only");
+        d.addOption("size-location", "Size + location");
+        d.setValue(this.host.session.getWindowRestoreMode()).onChange(async (v) => {
+          await this.host.session.setWindowRestoreMode(v);
+        });
+      });
     }
     new import_obsidian15.Setting(containerEl).setName(L2.settingsMenuBarEnabled).setDesc(L2.settingsMenuBarEnabledDesc).addToggle(
       (t) => t.setValue(!!data.macMenuBarEnabled).onChange(async (v) => {
@@ -14972,6 +15503,10 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
   constructor() {
     super(...arguments);
     this.menuBarAdapter = null;
+    /** Main-window access for pinned window sizes; null on mobile or without Electron. */
+    this.windowAdapter = null;
+    /** Applies the ribbon lock; null on phones or if the ribbon internals are missing. */
+    this.ribbonLockCtl = null;
     this.menuBarRecheckTimers = [];
     // Status-bar scroll state (consumed by statusbar-controller).
     this.statusBarScrollDelta = 0;
@@ -14996,6 +15531,15 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
     this.persistence.data = this.data;
     this.frontmatterCtl.app = this.app;
     this.frontmatterCtl.data = this.data;
+    if (import_obsidian16.Platform.isDesktopApp) this.windowAdapter = createWindowAdapter();
+    if (!import_obsidian16.Platform.isPhone) {
+      const ribbonAdapter = createRibbonAdapter(this.app);
+      if (ribbonAdapter) {
+        this.ribbonLockCtl = new RibbonLockController(this.session, ribbonAdapter, (m, t) => {
+          new import_obsidian16.Notice(m, t);
+        });
+      }
+    }
     this.wireServices();
     resolveLocale(this.data.language || "auto");
     setupStatusBar(this);
@@ -15010,7 +15554,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
     );
     this.registerEvent(
       this.app.workspace.on("layout-change", () => {
+        var _a;
         this.session.noteStartupLayoutChange();
+        (_a = this.ribbonLockCtl) == null ? void 0 : _a.noteLayoutChange();
         this.updateStatusBar();
       })
     );
@@ -15037,7 +15583,9 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
     this.addSettingTab(new WorkspaceMgrSettingTab(this.app, this));
     this.session.startStartupSettleWindow();
     this.app.workspace.onLayoutReady(() => {
+      var _a;
       this.session.ensureDefaultSession();
+      (_a = this.ribbonLockCtl) == null ? void 0 : _a.start();
       void this.session.scheduleStartupFlush();
       if (this.session.isVersionHistoryEnabled()) this.session.startHistorySnapshotTimer();
     });
@@ -15049,17 +15597,21 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
    * save overwrote it.
    */
   async onExternalSettingsChange() {
+    var _a;
     const savedData = await this.loadData() || {};
     if (!this.persistence.applyExternalDataJson(savedData)) return;
     this.applyStatusNameColor();
     this.applyUnsavedHighlightColor();
+    (_a = this.ribbonLockCtl) == null ? void 0 : _a.noteExternalChange();
     this.updateStatusBar();
     void this.persistence.persistData();
   }
   onunload() {
+    var _a;
     this.session.stopHistorySnapshotTimer();
     this.persistence.clearSessionStorageSyncTimers();
     this.session.clearSessionSwitchNotice();
+    (_a = this.ribbonLockCtl) == null ? void 0 : _a.stop();
     for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
     this.menuBarRecheckTimers = [];
     if (this.menuBarAdapter) {
@@ -15080,8 +15632,12 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
     s.notify = (m) => {
       new import_obsidian16.Notice(m);
     };
-    s.getCurrentWorkspaceLayout = () => this.layoutAdapter.getLayout();
-    s.changeWorkspaceLayout = (layout) => this.layoutAdapter.changeLayout(layout);
+    s.getCurrentWorkspaceLayout = () => this.stampLockedRibbon(this.layoutAdapter.getLayout());
+    s.changeWorkspaceLayout = (layout) => this.layoutAdapter.changeLayout(this.stampLockedRibbon(layout));
+    s.restoreWindowBounds = (bounds) => {
+      var _a;
+      return (_a = this.windowAdapter) == null ? void 0 : _a.applyBounds(bounds, s.getWindowRestoreMode());
+    };
     s.hasBlockingSwitchUi = () => !!document.querySelector(".wsmgr-confirm-buttons");
     s.promptSessionName = (opts) => {
       new RenameModal(this.app, "", opts.onSubmit, {
@@ -15207,6 +15763,106 @@ var WorkspaceMgrPlugin = class extends import_obsidian16.Plugin {
     this.addCommand({ id: "reload-session", name: L2.cmdReloadCurrentWithoutSaving, callback: () => void this.session.reloadCurrentSessionWithoutSaving() });
     this.addCommand({ id: "quick-restore-history", name: L2.historyRestore, callback: () => void this.session.quickRestoreLatestHistory() });
     this.addCommand({ id: "toggle-auto-save", name: L2.cmdToggleAutoSave, callback: () => void this.session.toggleAutoSaveOnSwitch({ notify: true }) });
+    if (this.windowAdapter) {
+      this.addCommand({
+        id: "pin-window-size",
+        name: L2.cmdPinWindowSize,
+        checkCallback: (checking) => {
+          const session = this.session.getActiveSession();
+          if (!session) return false;
+          if (!checking) void this.pinWindowSize(session.id);
+          return true;
+        }
+      });
+      this.addCommand({
+        id: "clear-window-size",
+        name: L2.cmdClearWindowSize,
+        checkCallback: (checking) => {
+          const session = this.session.getActiveSession();
+          if (!session || !session.windowBounds) return false;
+          if (!checking) void this.clearWindowSize(session.id);
+          return true;
+        }
+      });
+    }
+    if (this.ribbonLockCtl) {
+      this.addCommand({
+        id: "lock-ribbon",
+        name: L2.cmdRibbonLock,
+        checkCallback: (checking) => {
+          if (this.session.isRibbonLocked()) return false;
+          if (!checking) void this.lockRibbon();
+          return true;
+        }
+      });
+      this.addCommand({
+        id: "update-locked-ribbon",
+        name: L2.cmdRibbonLockUpdate,
+        checkCallback: (checking) => {
+          if (!this.session.isRibbonLocked()) return false;
+          if (!checking) void this.lockRibbon();
+          return true;
+        }
+      });
+      this.addCommand({
+        id: "unlock-ribbon",
+        name: L2.cmdRibbonUnlock,
+        checkCallback: (checking) => {
+          if (!this.session.isRibbonLocked()) return false;
+          if (!checking) void this.unlockRibbon();
+          return true;
+        }
+      });
+    }
+  }
+  // ------------------------------------------------------------------
+  // Pinned window size and ribbon lock (desktop; see the adapters)
+  // ------------------------------------------------------------------
+  stampLockedRibbon(layout) {
+    return this.ribbonLockCtl ? this.ribbonLockCtl.stampLayout(layout) : layout;
+  }
+  canPinWindowSize() {
+    return !!this.windowAdapter;
+  }
+  /** Record the main window's current bounds on `sessionId`. */
+  pinWindowSize(sessionId) {
+    const session = this.data.sessions[sessionId];
+    const bounds = this.windowAdapter ? this.windowAdapter.captureBounds() : null;
+    if (!session) return Promise.resolve(false);
+    if (!bounds) {
+      new import_obsidian16.Notice(L.windowSizeUnavailable);
+      return Promise.resolve(false);
+    }
+    return this.session.pinWindowBounds(sessionId, bounds).then((ok) => {
+      if (ok) new import_obsidian16.Notice(L.windowSizePinned(session.name, bounds.width, bounds.height));
+      return ok;
+    });
+  }
+  clearWindowSize(sessionId) {
+    const session = this.data.sessions[sessionId];
+    if (!session) return Promise.resolve(false);
+    return this.session.clearWindowBounds(sessionId).then((ok) => {
+      if (ok) new import_obsidian16.Notice(L.windowSizeCleared(session.name));
+      return ok;
+    });
+  }
+  canLockRibbon() {
+    return !!this.ribbonLockCtl;
+  }
+  /** Lock the ribbon to its current layout, or re-pin it while already locked. */
+  lockRibbon() {
+    if (!this.ribbonLockCtl) return Promise.resolve(false);
+    const wasLocked = this.session.isRibbonLocked();
+    return this.ribbonLockCtl.lockFromCurrent().then((ok) => {
+      if (ok) new import_obsidian16.Notice(wasLocked ? L.ribbonLockUpdated : L.ribbonLockLocked);
+      return ok;
+    });
+  }
+  unlockRibbon() {
+    return this.session.unlockRibbon().then((ok) => {
+      if (ok) new import_obsidian16.Notice(L.ribbonLockUnlocked);
+      return ok;
+    });
   }
   // ------------------------------------------------------------------
   // UI-orchestration methods used by the status bar / menus / modals

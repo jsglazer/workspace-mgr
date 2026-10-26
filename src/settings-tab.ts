@@ -22,6 +22,10 @@ export interface SettingsHost {
     updateStatusBar(): void;
     updateMacMenuBar(): void;
     setStatusBarAction(slotKey: string, actionId: string): Promise<unknown>;
+    canPinWindowSize(): boolean;
+    canLockRibbon(): boolean;
+    lockRibbon(): Promise<boolean>;
+    unlockRibbon(): Promise<boolean>;
 }
 
 export class WorkspaceMgrSettingTab extends PluginSettingTab {
@@ -285,9 +289,63 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                 }),
             );
 
-        // --- Ribbon sync ---
+        // --- Ribbon ---
         new Setting(containerEl).setName('Ribbon').setHeading();
-        {
+        if (this.host.canLockRibbon()) {
+            const locked = this.host.session.isRibbonLocked();
+            const lockSetting = new Setting(containerEl)
+                .setName(L.cmdRibbonLock)
+                .setDesc(
+                    locked
+                        ? 'Locked. Every workspace switch, layout load and restart puts the left ribbon back to the locked icon order and visibility. ' +
+                              'Hand edits are undone — update the lock to keep them.'
+                        : 'Freeze the left ribbon as it is now (icon order and which icons are hidden), so switching workspaces can no longer change it. ' +
+                              'Every saved layout carries its own ribbon snapshot; while locked, they all get this one instead.',
+                );
+            if (locked) {
+                lockSetting
+                    .addButton((b) =>
+                        b.setButtonText(L.cmdRibbonLockUpdate).onClick(async () => {
+                            await this.host.lockRibbon();
+                            this.display();
+                        }),
+                    )
+                    .addButton((b) =>
+                        b.setButtonText(L.cmdRibbonUnlock).onClick(async () => {
+                            await this.host.unlockRibbon();
+                            this.display();
+                        }),
+                    );
+            } else {
+                lockSetting.addButton((b) =>
+                    b
+                        .setButtonText('Lock ribbon')
+                        .setCta()
+                        .onClick(async () => {
+                            await this.host.lockRibbon();
+                            this.display();
+                        }),
+                );
+            }
+
+            new Setting(containerEl)
+                .setName('Icons not in the lock')
+                .setDesc(
+                    'How icons the lock does not know about (a newly installed plugin, a renamed command) appear. ' +
+                        'They are always added at the end of the ribbon, and a notice names them once.',
+                )
+                .addDropdown((d) => {
+                    d.addOption('hidden', 'Hidden');
+                    d.addOption('shown', 'Shown');
+                    d.setValue(this.host.session.isRibbonLockUnknownHidden() ? 'hidden' : 'shown').onChange(async (v) => {
+                        await this.host.session.setRibbonLockUnknownItems(v);
+                    });
+                });
+        }
+
+        // The one-time sync rewrites the workspaces' saved ribbon snapshots. The
+        // lock overrides those snapshots, so it is only offered while unlocked.
+        if (!this.host.session.isRibbonLocked()) {
             const allSessions = this.host.session.getOrderedSessionsUnfiltered();
             let ribbonSourceId = allSessions.some((s) => s.id === data.activeSessionId)
                 ? (data.activeSessionId as string)
@@ -295,8 +353,8 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
             new Setting(containerEl)
                 .setName('Sync left ribbon')
                 .setDesc(
-                    "Replicate the selected workspace's left-ribbon icon visibility to every other workspace. " +
-                        "Obsidian doesn't store icon order, so only which icons are shown or hidden is synced.",
+                    "Copy the selected workspace's saved left ribbon (icon order and which icons are hidden) into every other workspace. " +
+                        'A one-time copy; the lock above keeps the ribbon fixed instead.',
                 )
                 .addDropdown((d) => {
                     for (const s of allSessions) d.addOption(s.id, s.name);
@@ -308,7 +366,6 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
                 .addButton((b) =>
                     b
                         .setButtonText('Sync now')
-                        .setCta()
                         .onClick(async () => {
                             if (!ribbonSourceId) return;
                             const ok = await this.host.session.syncRibbonFromSession(ribbonSourceId);
@@ -322,12 +379,31 @@ export class WorkspaceMgrSettingTab extends PluginSettingTab {
 
             new Setting(containerEl)
                 .setName('Also sync new workspaces automatically')
-                .setDesc('Apply the same ribbon visibility whenever a new workspace is created.')
+                .setDesc('Give every new workspace the same ribbon order and visibility.')
                 .addToggle((t) =>
                     t.setValue(!!data.ribbonSyncToFutureSessions).onChange(async (v) => {
                         await this.host.session.setRibbonSyncToFutureSessions(v);
                     }),
                 );
+        }
+
+        // --- Pinned window size ---
+        if (this.host.canPinWindowSize()) {
+            new Setting(containerEl).setName('Window size').setHeading();
+            new Setting(containerEl)
+                .setName('Restore pinned window')
+                .setDesc(
+                    "A workspace remembers Obsidian's window size only after \"" + L.contextPinWindowSize + '" (workspace menu, a workspace\'s right-click menu, or the command palette); ' +
+                        'switching to it then restores that size. "Size + location" also moves the window back, and re-maximizes or re-enters full screen if it was pinned that way. ' +
+                        'A window pinned on a display that is no longer attached is brought onto a visible one. Main window only.',
+                )
+                .addDropdown((d) => {
+                    d.addOption('size', 'Size only');
+                    d.addOption('size-location', 'Size + location');
+                    d.setValue(this.host.session.getWindowRestoreMode()).onChange(async (v) => {
+                        await this.host.session.setWindowRestoreMode(v);
+                    });
+                });
         }
 
         // --- macOS menu bar ---

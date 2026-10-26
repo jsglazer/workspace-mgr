@@ -17,13 +17,16 @@ import {
 } from './core/css';
 import { createLayoutAdapter, type LayoutAdapter } from './adapter/layout-adapter';
 import { createMenuBarAdapter, type MenuBarAdapter } from './adapter/menubar-adapter';
+import { createWindowAdapter, type WindowAdapter } from './adapter/window-adapter';
+import { createRibbonAdapter } from './adapter/ribbon-adapter';
+import { RibbonLockController } from './ribbon-lock-controller';
 import { renderStatusBar } from './session-statusbar';
 import { setupStatusBar } from './statusbar-controller';
 import { WorkspaceMgrSettingTab, type SettingsHost } from './settings-tab';
 import { RenameModal, UnsavedSwitchModal, ConfirmModal, SessionManagerModal } from './modals';
 import { renameSessionWithPrompt, deleteSessionWithPrompt } from './session-list-actions';
 import { addGroupedSessionItems, openWorkspaceMenu } from './workspace-menu';
-import type { Group, Session, SessionData } from './core/types';
+import type { Group, Layout, Session, SessionData } from './core/types';
 
 export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     data!: SessionData;
@@ -32,6 +35,10 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
     frontmatterCtl!: FrontmatterController;
     layoutAdapter!: LayoutAdapter;
     menuBarAdapter: MenuBarAdapter | null = null;
+    /** Main-window access for pinned window sizes; null on mobile or without Electron. */
+    windowAdapter: WindowAdapter | null = null;
+    /** Applies the ribbon lock; null on phones or if the ribbon internals are missing. */
+    ribbonLockCtl: RibbonLockController | null = null;
     private menuBarRecheckTimers: number[] = [];
     statusBarEl?: HTMLElement;
 
@@ -67,6 +74,18 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.frontmatterCtl.app = this.app as never;
         this.frontmatterCtl.data = this.data;
 
+        // Both features hide themselves (menu items, commands, settings) when
+        // their adapter is unavailable, so mobile simply never sees them.
+        if (Platform.isDesktopApp) this.windowAdapter = createWindowAdapter();
+        if (!Platform.isPhone) {
+            const ribbonAdapter = createRibbonAdapter(this.app);
+            if (ribbonAdapter) {
+                this.ribbonLockCtl = new RibbonLockController(this.session, ribbonAdapter, (m, t) => {
+                    new Notice(m, t);
+                });
+            }
+        }
+
         this.wireServices();
         i18n.resolveLocale((this.data.language as string) || 'auto');
 
@@ -86,6 +105,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.registerEvent(
             this.app.workspace.on('layout-change', () => {
                 this.session.noteStartupLayoutChange();
+                this.ribbonLockCtl?.noteLayoutChange();
                 this.updateStatusBar();
             }),
         );
@@ -123,6 +143,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.session.startStartupSettleWindow();
         this.app.workspace.onLayoutReady(() => {
             this.session.ensureDefaultSession();
+            this.ribbonLockCtl?.start();
             void this.session.scheduleStartupFlush();
             if (this.session.isVersionHistoryEnabled()) this.session.startHistorySnapshotTimer();
         });
@@ -139,6 +160,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         if (!this.persistence.applyExternalDataJson(savedData)) return;
         this.applyStatusNameColor();
         this.applyUnsavedHighlightColor();
+        this.ribbonLockCtl?.noteExternalChange();
         this.updateStatusBar();
         void this.persistence.persistData();
     }
@@ -147,6 +169,7 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.session.stopHistorySnapshotTimer();
         this.persistence.clearSessionStorageSyncTimers();
         this.session.clearSessionSwitchNotice();
+        this.ribbonLockCtl?.stop();
         for (const timer of this.menuBarRecheckTimers) window.clearTimeout(timer);
         this.menuBarRecheckTimers = [];
         if (this.menuBarAdapter) {
@@ -170,9 +193,12 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         s.notify = (m) => {
             new Notice(m);
         };
-        // Confine layout internals to the adapter.
-        s.getCurrentWorkspaceLayout = () => this.layoutAdapter.getLayout();
-        s.changeWorkspaceLayout = (layout) => this.layoutAdapter.changeLayout(layout as never);
+        // Confine layout internals to the adapter. While the ribbon is locked,
+        // every layout read (so every save) and every layout load carries the
+        // pinned ribbon instead of whatever snapshot it held.
+        s.getCurrentWorkspaceLayout = () => this.stampLockedRibbon(this.layoutAdapter.getLayout());
+        s.changeWorkspaceLayout = (layout) => this.layoutAdapter.changeLayout(this.stampLockedRibbon(layout as Layout));
+        s.restoreWindowBounds = (bounds) => this.windowAdapter?.applyBounds(bounds, s.getWindowRestoreMode());
         s.hasBlockingSwitchUi = () => !!document.querySelector('.wsmgr-confirm-buttons');
         s.promptSessionName = (opts) => {
             new RenameModal(this.app, '', opts.onSubmit, {
@@ -312,6 +338,115 @@ export default class WorkspaceMgrPlugin extends Plugin implements SettingsHost {
         this.addCommand({ id: 'reload-session', name: L.cmdReloadCurrentWithoutSaving, callback: () => void this.session.reloadCurrentSessionWithoutSaving() });
         this.addCommand({ id: 'quick-restore-history', name: L.historyRestore, callback: () => void this.session.quickRestoreLatestHistory() });
         this.addCommand({ id: 'toggle-auto-save', name: L.cmdToggleAutoSave, callback: () => void this.session.toggleAutoSaveOnSwitch({ notify: true }) });
+
+        if (this.windowAdapter) {
+            this.addCommand({
+                id: 'pin-window-size',
+                name: L.cmdPinWindowSize,
+                checkCallback: (checking) => {
+                    const session = this.session.getActiveSession();
+                    if (!session) return false;
+                    if (!checking) void this.pinWindowSize(session.id);
+                    return true;
+                },
+            });
+            this.addCommand({
+                id: 'clear-window-size',
+                name: L.cmdClearWindowSize,
+                checkCallback: (checking) => {
+                    const session = this.session.getActiveSession();
+                    if (!session || !session.windowBounds) return false;
+                    if (!checking) void this.clearWindowSize(session.id);
+                    return true;
+                },
+            });
+        }
+
+        if (this.ribbonLockCtl) {
+            this.addCommand({
+                id: 'lock-ribbon',
+                name: L.cmdRibbonLock,
+                checkCallback: (checking) => {
+                    if (this.session.isRibbonLocked()) return false;
+                    if (!checking) void this.lockRibbon();
+                    return true;
+                },
+            });
+            this.addCommand({
+                id: 'update-locked-ribbon',
+                name: L.cmdRibbonLockUpdate,
+                checkCallback: (checking) => {
+                    if (!this.session.isRibbonLocked()) return false;
+                    if (!checking) void this.lockRibbon();
+                    return true;
+                },
+            });
+            this.addCommand({
+                id: 'unlock-ribbon',
+                name: L.cmdRibbonUnlock,
+                checkCallback: (checking) => {
+                    if (!this.session.isRibbonLocked()) return false;
+                    if (!checking) void this.unlockRibbon();
+                    return true;
+                },
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Pinned window size and ribbon lock (desktop; see the adapters)
+    // ------------------------------------------------------------------
+    private stampLockedRibbon(layout: Layout): Layout {
+        return this.ribbonLockCtl ? this.ribbonLockCtl.stampLayout(layout) : layout;
+    }
+
+    canPinWindowSize(): boolean {
+        return !!this.windowAdapter;
+    }
+
+    /** Record the main window's current bounds on `sessionId`. */
+    pinWindowSize(sessionId: string): Promise<boolean> {
+        const session = this.data.sessions[sessionId];
+        const bounds = this.windowAdapter ? this.windowAdapter.captureBounds() : null;
+        if (!session) return Promise.resolve(false);
+        if (!bounds) {
+            new Notice(i18n.L.windowSizeUnavailable);
+            return Promise.resolve(false);
+        }
+        return this.session.pinWindowBounds(sessionId, bounds).then((ok) => {
+            if (ok) new Notice(i18n.L.windowSizePinned(session.name, bounds.width, bounds.height));
+            return ok;
+        });
+    }
+
+    clearWindowSize(sessionId: string): Promise<boolean> {
+        const session = this.data.sessions[sessionId];
+        if (!session) return Promise.resolve(false);
+        return this.session.clearWindowBounds(sessionId).then((ok) => {
+            if (ok) new Notice(i18n.L.windowSizeCleared(session.name));
+            return ok;
+        });
+    }
+
+    canLockRibbon(): boolean {
+        return !!this.ribbonLockCtl;
+    }
+
+    /** Lock the ribbon to its current layout, or re-pin it while already locked. */
+    lockRibbon(): Promise<boolean> {
+        if (!this.ribbonLockCtl) return Promise.resolve(false);
+        const wasLocked = this.session.isRibbonLocked();
+        return this.ribbonLockCtl.lockFromCurrent().then((ok) => {
+            if (ok) new Notice(wasLocked ? i18n.L.ribbonLockUpdated : i18n.L.ribbonLockLocked);
+            return ok;
+        });
+    }
+
+    unlockRibbon(): Promise<boolean> {
+        return this.session.unlockRibbon().then((ok) => {
+            if (ok) new Notice(i18n.L.ribbonLockUnlocked);
+            return ok;
+        });
     }
 
     // ------------------------------------------------------------------
