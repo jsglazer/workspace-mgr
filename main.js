@@ -14879,8 +14879,8 @@ function buildWorkspaceMenu(plugin) {
     });
   };
   if (actions) {
-    add(L2.statusBarActionSaveSession, "save", () => actions.onSave(), "wsmgr-menu-save");
     add(L2.statusBarActionReloadWithoutSaving, "refresh-cw", () => actions.onReload(), "wsmgr-menu-reload");
+    add(L2.statusBarActionSaveSession, "save", () => actions.onSave(), "wsmgr-menu-save");
     menu.addSeparator();
   }
   const count = addGroupedSessionItems(menu, plugin, {

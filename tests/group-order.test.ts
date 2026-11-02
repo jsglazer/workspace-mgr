@@ -175,8 +175,8 @@ describe('workspace menu', () => {
         const { svc } = createService();
         buildWorkspaceMenu(menuPlugin(svc) as never);
         const entries = lastMenu!.entries;
-        expect(entries[0]).toMatchObject({ kind: 'item', title: 'statusBarActionSaveSession', cls: ['wsmgr-menu-save'] });
-        expect(entries[1]).toMatchObject({ kind: 'item', title: 'statusBarActionReloadWithoutSaving', cls: ['wsmgr-menu-reload'] });
+        expect(entries[0]).toMatchObject({ kind: 'item', title: 'statusBarActionReloadWithoutSaving', cls: ['wsmgr-menu-reload'] });
+        expect(entries[1]).toMatchObject({ kind: 'item', title: 'statusBarActionSaveSession', cls: ['wsmgr-menu-save'] });
         expect(entries[2]).toEqual({ kind: 'sep' });
         expect(titles(entries).filter((t) => t === 'statusBarActionSaveSession')).toHaveLength(1);
         expect(titles(entries).filter((t) => t === 'statusBarActionReloadWithoutSaving')).toHaveLength(1);

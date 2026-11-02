@@ -151,8 +151,8 @@ export function buildWorkspaceMenu(plugin: WorkspaceMenuPlugin): Menu {
 
     // The two most-used actions on the active session lead the menu.
     if (actions) {
-        add(L.statusBarActionSaveSession, 'save', () => actions.onSave(), 'wsmgr-menu-save');
         add(L.statusBarActionReloadWithoutSaving, 'refresh-cw', () => actions.onReload(), 'wsmgr-menu-reload');
+        add(L.statusBarActionSaveSession, 'save', () => actions.onSave(), 'wsmgr-menu-save');
         menu.addSeparator();
     }
 
