@@ -1,5 +1,13 @@
 # Workspace Manager
 
+[![GitHub release](https://img.shields.io/github/v/release/jsglazer/workspace-mgr?logo=github)](https://github.com/jsglazer/workspace-mgr/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jsglazer/workspace-mgr/blob/main/LICENSE)
+[![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai)
+[![Gemini Flash Antigravity](https://img.shields.io/badge/Gemini%20Flash-Antigravity-4f86f7?logo=google-gemini&logoColor=white)](https://github.com/google-gemini)
+[![CI](https://github.com/jsglazer/workspace-mgr/actions/workflows/ci.yml/badge.svg)](https://github.com/jsglazer/workspace-mgr/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jsglazer/workspace-mgr/actions/workflows/codeql.yml/badge.svg)](https://github.com/jsglazer/workspace-mgr/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jsglazer/workspace-mgr/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jsglazer/workspace-mgr)
+
 Workspace Manager (`workspace-mgr`) is an [Obsidian](https://obsidian.md/) community plugin for saving, switching, and organizing workspace sessions. It is built for people who want Obsidian layouts to feel fast, native, and keyboard-friendly — with **local-first storage that actually crosses devices** under Obsidian Sync.
 
 > **Derived from [obsidian-workspace-plus](https://github.com/s1m4ne/obsidian-workspace-plus)**
